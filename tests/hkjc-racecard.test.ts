@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseHkjcRaceCardGraphql, parseHkjcRaceCardHtml } from "@/lib/hkjc-racecard";
+import { parseHkjcRaceCardGraphql, parseHkjcRaceCardHtml, parseMainHkjcFixtureMeetings } from "@/lib/hkjc-racecard";
 import { parseHkjcRaceResultHtml } from "@/lib/hkjc-results";
 
 const fixture = `
@@ -343,6 +343,43 @@ test("HKJC HTML parser returns null for overseas racecards", () => {
     ),
     null,
   );
+});
+
+test("HKJC fixture parser finds upcoming Sha Tin and Happy Valley meetings only", () => {
+  const fixtureCalendar = `
+    <table>
+      <tr class="bg_blue color_w"><td colspan="7">5/2026</td></tr>
+      <tr>
+        <td class="calendar">
+          <p class="f_clear">
+            <span class="f_fl f_fs14">10</span>
+            <span class="f_fr"><img alt="S1" /></span>
+          </p>
+          <p><span class="font_wb">1600(1)</span></p>
+        </td>
+        <td class="calendar">
+          <p class="f_clear">
+            <span class="f_fl f_fs14">13</span>
+            <span class="f_fr"><img alt="HV" /></span>
+          </p>
+          <p><span class="font_wb">1650(1)</span></p>
+          <p><span class="font_wb">1200(2)</span></p>
+        </td>
+        <td class="calendar">
+          <p class="f_clear">
+            <span class="f_fl f_fs14">17</span>
+            <span class="f_fr"><img alt="ST" /></span>
+          </p>
+          <p><span class="font_wb">1200(1)</span></p>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  assert.deepEqual(parseMainHkjcFixtureMeetings(fixtureCalendar, new Date("2026-05-11T00:00:00+08:00")), [
+    { raceDate: "2026-05-13", racecourseCode: "HV", raceCount: 2 },
+    { raceDate: "2026-05-17", racecourseCode: "ST", raceCount: 1 },
+  ]);
 });
 
 test("HKJC result parser extracts official winner", () => {

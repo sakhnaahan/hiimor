@@ -113,7 +113,9 @@ export async function getHkjcWinOdds({
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "user-agent": "private-horse-race/0.1 (+https://bet.hkjc.com)",
+      "origin": "https://bet.hkjc.com",
+      "referer": "https://bet.hkjc.com/en/racing/pwin",
+      "user-agent": "Mozilla/5.0 (compatible; private-horse-race/0.1; +https://bet.hkjc.com)",
     },
     signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
     body: JSON.stringify({

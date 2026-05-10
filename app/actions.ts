@@ -17,12 +17,13 @@ import {
   signupSchema,
   userIdSchema,
 } from "@/lib/validation";
-import { getHkjcUpcomingRaceCard } from "@/lib/hkjc-racecard";
+import { getHkjcUpcomingRaceCard, isLocalMainRaceCard } from "@/lib/hkjc-racecard";
 import { validateLockedWinOddsQuote } from "@/lib/race-betting-ui";
 import { isMainAdminUsername } from "@/lib/admin";
 import { canResetUserPassword, generateTemporaryPassword } from "@/lib/password-reset";
 import { getCurrentLanguage } from "@/lib/language";
 import { translateServerMessage } from "@/lib/i18n";
+import { calculateRaceOutcome } from "@/lib/game";
 
 export type ActionState = {
   ok?: boolean;
@@ -535,6 +536,18 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
     return { message: await localizedMessage("Odds changed. Please confirm again.") };
   }
 
+  const localOutcome = isLocalMainRaceCard(hkjcRaceCard.raceCard)
+    ? calculateRaceOutcome(
+        selectedRunner.name,
+        parsed.data.betAmount,
+        oddsValidation.lockedWinOdds,
+        Math.random(),
+        hkjcRaceCard.raceCard.runners.map((runner) => runner.name),
+      )
+    : null;
+  const localWinningRunner = localOutcome
+    ? hkjcRaceCard.raceCard.runners.find((runner) => runner.name === localOutcome.winningHorse)
+    : null;
   let raceId: number | null = null;
 
   try {
@@ -567,17 +580,19 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
           userId: player.id,
           selectedHorse: selectedRunner.name,
           selectedHorseNo: selectedRunner.horseNo,
-          winningHorse: "",
+          winningHorse: localOutcome?.winningHorse ?? "",
+          winningHorseNo: localWinningRunner?.horseNo,
           betAmount: parsed.data.betAmount,
           multiplierUsed: oddsValidation.lockedWinOdds,
-          payout: 0,
-          result: "PENDING",
+          payout: localOutcome?.payout ?? 0,
+          result: localOutcome ? (localOutcome.isWin ? "WIN" : "LOSS") : "PENDING",
           hkjcRaceDate: hkjcRaceCard.raceCard.raceDate,
           hkjcRacecourseCode: hkjcRaceCard.raceCard.racecourseCode,
           hkjcRacecourseName: hkjcRaceCard.raceCard.racecourse,
           hkjcRaceNo: hkjcRaceCard.raceCard.raceNo,
           hkjcRaceName: hkjcRaceCard.raceCard.raceName,
           hkjcRaceStartTime: hkjcRaceCard.raceCard.startTime,
+          settledAt: localOutcome ? new Date() : null,
         },
       });
 
@@ -592,6 +607,36 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
         },
       });
 
+      if (localOutcome) {
+        if (localOutcome.isWin) {
+          await tx.user.update({
+            where: { id: player.id },
+            data: { coinBalance: { increment: localOutcome.payout } },
+          });
+          await tx.coinTransaction.create({
+            data: {
+              userId: player.id,
+              type: "RACE_WIN",
+              amount: localOutcome.payout,
+              balanceBefore: balanceAfterBet,
+              balanceAfter: balanceAfterBet + localOutcome.payout,
+              relatedRaceId: race.id,
+            },
+          });
+        } else {
+          await tx.coinTransaction.create({
+            data: {
+              userId: player.id,
+              type: "RACE_LOSS",
+              amount: 0,
+              balanceBefore: balanceAfterBet,
+              balanceAfter: balanceAfterBet,
+              relatedRaceId: race.id,
+            },
+          });
+        }
+      }
+
       return race.id;
     });
   } catch (error) {
@@ -602,6 +647,15 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
   revalidatePath("/race");
   revalidatePath("/history");
   const language = await getCurrentLanguage();
+  if (localOutcome) {
+    return {
+      ok: true,
+      message: localOutcome.isWin
+        ? `Race #${raceId} settled. ${selectedRunner.name} won ${localOutcome.payout} coins.`
+        : `Race #${raceId} settled. Winner: ${localOutcome.winningHorse}.`,
+    };
+  }
+
   return {
     ok: true,
     message:
