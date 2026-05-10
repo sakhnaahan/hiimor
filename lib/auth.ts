@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { ensureBootstrapData } from "@/lib/bootstrap";
 import { SESSION_COOKIE_NAME, SESSION_DAYS } from "@/lib/constants";
 
 export type AuthUser = {
@@ -56,6 +57,7 @@ export async function destroySession() {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
+    await ensureBootstrapData();
     await prisma.session.deleteMany({
       where: { tokenHash: hashToken(token) },
     });
@@ -70,6 +72,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!token) {
     return null;
   }
+
+  await ensureBootstrapData();
 
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
