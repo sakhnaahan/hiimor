@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isMainHkjcRacecourse } from "@/lib/hkjc-racecard";
 
 export const usernameSchema = z
   .string()
@@ -46,7 +47,12 @@ export const changePasswordSchema = z
 export const raceSchema = z.object({
   selectedHorseNo: z.string().trim().min(1, "Choose a horse.").max(10, "Horse number is too long."),
   raceDate: z.string().trim().min(1, "Race date is required.").max(20),
-  racecourseCode: z.string().trim().min(1, "Racecourse is required.").max(10),
+  racecourseCode: z
+    .string()
+    .trim()
+    .min(1, "Racecourse is required.")
+    .max(10)
+    .refine(isMainHkjcRacecourse, "Only Sha Tin and Happy Valley races are available."),
   raceNo: z.coerce.number().int().positive().max(99),
   quotedWinOdds: z.string().trim().min(1, "Odds are unavailable. Try again shortly.").max(20),
   betAmount: z.coerce.number().int().positive().max(1_000_000),

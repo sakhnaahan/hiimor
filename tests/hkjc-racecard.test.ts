@@ -112,7 +112,7 @@ test("HKJC parser returns null for unrecognized markup", () => {
   assert.equal(parseHkjcRaceCardHtml("<html><body>No racecard here</body></html>"), null);
 });
 
-test("HKJC GraphQL parser selects the next active race automatically", () => {
+test("HKJC GraphQL parser skips overseas meetings and selects a main HK race", () => {
   const raceCard = parseHkjcRaceCardGraphql({
     data: {
       raceMeetings: [
@@ -178,44 +178,171 @@ test("HKJC GraphQL parser selects the next active race automatically", () => {
             },
           ],
         },
+        {
+          venueCode: "ST",
+          date: "2026-05-10",
+          currentNumberOfRace: 3,
+          dateOfWeek: "SUN",
+          races: [
+            {
+              no: 3,
+              status: "DECLARED",
+              raceName_en: "Sha Tin Sprint",
+              postTime: "2026-05-10T15:10:00+08:00",
+              country_en: "Hong Kong",
+              distance: 1200,
+              go_en: "GOOD",
+              raceClass_en: "Class 3",
+              raceTrack: { description_en: "Turf" },
+              raceCourse: { description_en: "Sha Tin Racecourse", displayCode: "A" },
+              runners: [
+                {
+                  no: "2",
+                  status: "Declared",
+                  name_en: "Main Circuit",
+                  horse: { code: "L123" },
+                  barrierDrawNumber: "4",
+                  handicapWeight: "126",
+                  currentRating: "80",
+                  currentWeight: "1080",
+                  gearInfo: "B",
+                  last6run: "2/1/3",
+                  winOdds: "3.2",
+                  jockey: { name_en: "Z Purton" },
+                  trainer: { name_en: "K W Lui" },
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
   });
 
   assert.ok(raceCard);
   assert.equal(raceCard.raceDate, "2026-05-10");
-  assert.equal(raceCard.racecourseCode, "S1");
-  assert.equal(raceCard.raceNo, 2);
-  assert.equal(raceCard.raceName, "Victoria Mile");
+  assert.equal(raceCard.racecourseCode, "ST");
+  assert.equal(raceCard.raceNo, 3);
+  assert.equal(raceCard.raceName, "Sha Tin Sprint");
   assert.equal(raceCard.meetingDate, "SUN, 2026-05-10");
-  assert.equal(raceCard.racecourse, "Tokyo Racecourse");
-  assert.equal(raceCard.startTime, "14:40");
+  assert.equal(raceCard.racecourse, "Sha Tin Racecourse");
+  assert.equal(raceCard.startTime, "15:10");
   assert.equal(raceCard.surface, "Turf");
-  assert.equal(raceCard.course, "Turf");
-  assert.equal(raceCard.distance, "1600M");
+  assert.equal(raceCard.course, "A");
+  assert.equal(raceCard.distance, "1200M");
   assert.equal(raceCard.going, "GOOD");
   assert.deepEqual(raceCard.raceOptions, [
-    { raceNo: 2, raceDate: "2026-05-10", racecourseCode: "S1" },
+    { raceNo: 3, raceDate: "2026-05-10", racecourseCode: "ST" },
   ]);
   assert.deepEqual(raceCard.runners[0], {
-    horseNo: "7",
-    last6Runs: "1/4/2",
-    name: "Alpha Queen (JPN)",
-    brandNo: "20260510S10207H",
+    horseNo: "2",
+    last6Runs: "2/1/3",
+    name: "Main Circuit",
+    brandNo: "L123",
     weight: "126",
-    jockey: "Yuga Kawada",
+    jockey: "Z Purton",
     overWeight: "",
-    draw: "8",
-    trainer: "H Fujiwara",
-    rating: "103",
-    horseWeight: "1010",
+    draw: "4",
+    trainer: "K W Lui",
+    rating: "80",
+    horseWeight: "1080",
     bestTime: "",
     age: "",
     sex: "",
     daysSinceLastRun: "",
     gear: "B",
-    winOdds: "4.8",
+    winOdds: "3.2",
   });
+});
+
+test("HKJC GraphQL parser returns null when only overseas meetings exist", () => {
+  const raceCard = parseHkjcRaceCardGraphql({
+    data: {
+      raceMeetings: [
+        {
+          venueCode: "S1",
+          date: "2026-05-10",
+          currentNumberOfRace: 2,
+          races: [
+            {
+              no: 2,
+              status: "DECLARED",
+              raceName_en: "Victoria Mile",
+              postTime: "2026-05-10T14:40:00+08:00",
+              country_en: "Japan",
+              distance: 1600,
+              raceCourse: { description_en: "Tokyo Racecourse", displayCode: "Turf" },
+              runners: [{ no: "7", status: "Declared", name_en: "Alpha Queen (JPN)" }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(raceCard, null);
+});
+
+test("HKJC GraphQL parser ignores direct overseas racecourse requests", () => {
+  const raceCard = parseHkjcRaceCardGraphql(
+    {
+      data: {
+        raceMeetings: [
+          {
+            venueCode: "S1",
+            date: "2026-05-10",
+            currentNumberOfRace: 2,
+            races: [
+              {
+                no: 2,
+                status: "DECLARED",
+                raceName_en: "Victoria Mile",
+                postTime: "2026-05-10T14:40:00+08:00",
+                country_en: "Japan",
+                distance: 1600,
+                raceCourse: { description_en: "Tokyo Racecourse", displayCode: "Turf" },
+                runners: [{ no: "7", status: "Declared", name_en: "Alpha Queen (JPN)" }],
+              },
+            ],
+          },
+          {
+            venueCode: "HV",
+            date: "2026-05-10",
+            currentNumberOfRace: 1,
+            races: [
+              {
+                no: 1,
+                status: "DECLARED",
+                raceName_en: "Valley Trophy",
+                postTime: "2026-05-10T19:10:00+08:00",
+                country_en: "Hong Kong",
+                distance: 1650,
+                raceCourse: { description_en: "Happy Valley Racecourse", displayCode: "B" },
+                runners: [{ no: "1", status: "Declared", name_en: "Valley Star" }],
+              },
+            ],
+          },
+        ],
+      },
+    },
+    { raceDate: "2026-05-10", racecourse: "S1", raceNo: 2 },
+  );
+
+  assert.ok(raceCard);
+  assert.equal(raceCard.racecourseCode, "HV");
+  assert.equal(raceCard.raceName, "Valley Trophy");
+});
+
+test("HKJC HTML parser returns null for overseas racecards", () => {
+  const overseasFixture = fixture.replace("Sha Tin, 12:30", "Tokyo Racecourse, 12:30");
+
+  assert.equal(
+    parseHkjcRaceCardHtml(
+      overseasFixture,
+      "https://example.test/racecard?racedate=2026/05/09&Racecourse=S1&RaceNo=1",
+    ),
+    null,
+  );
 });
 
 test("HKJC result parser extracts official winner", () => {

@@ -67,6 +67,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
   };
   assert.equal(raceSchema.safeParse(validRaceBet).success, true);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, selectedHorseNo: "" }).success, false);
+  assert.equal(raceSchema.safeParse({ ...validRaceBet, racecourseCode: "S1" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, betAmount: "0" }).success, false);
   assert.equal(roleChangeSchema.safeParse({ userId: "1", role: "admin" }).success, true);
   assert.equal(roleChangeSchema.safeParse({ userId: "1", role: "owner" }).success, false);

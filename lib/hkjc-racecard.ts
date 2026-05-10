@@ -5,6 +5,13 @@ const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racec
 const HKJC_GRAPHQL_URL = "https://info.cld.hkjc.com/graphql/base/";
 const HKJC_CACHE_SECONDS = 60;
 const HKJC_FETCH_TIMEOUT_MS = 10_000;
+const MAIN_HKJC_RACECOURSE_CODES = new Set(["ST", "HV"]);
+const MAIN_HKJC_RACECOURSE_LABELS = new Set([
+  "happy valley",
+  "happy valley racecourse",
+  "sha tin",
+  "sha tin racecourse",
+]);
 
 const HKJC_RACE_MEETINGS_QUERY = `
 fragment raceFragment on Race {
@@ -316,6 +323,38 @@ function normalizeText(value: string) {
   return value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function normalizeRacecourseCode(value: string | null | undefined) {
+  return normalizeText(value ?? "").toUpperCase();
+}
+
+function normalizeRacecourseLabel(value: string | null | undefined) {
+  return normalizeText(value ?? "").toLowerCase();
+}
+
+export function isMainHkjcRacecourse(value: string | null | undefined) {
+  return (
+    MAIN_HKJC_RACECOURSE_CODES.has(normalizeRacecourseCode(value)) ||
+    MAIN_HKJC_RACECOURSE_LABELS.has(normalizeRacecourseLabel(value))
+  );
+}
+
+function isAllowedMeeting(meeting: HkjcGraphqlMeeting) {
+  return isMainHkjcRacecourse(meeting.venueCode);
+}
+
+function sanitizeRaceRequest(request: RaceRequest = {}) {
+  if (request.racecourse && !isMainHkjcRacecourse(request.racecourse)) {
+    return {};
+  }
+
+  return request.racecourse
+    ? {
+        ...request,
+        racecourse: normalizeRacecourseCode(request.racecourse),
+      }
+    : request;
+}
+
 function cleanDash(value: string) {
   const normalized = normalizeText(value);
   return normalized === "-" ? "" : normalized;
@@ -381,6 +420,10 @@ function buildGraphqlSourceUrl(meeting: HkjcGraphqlMeeting, raceNo: number) {
 }
 
 function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace): HkjcRaceCard | null {
+  if (!isAllowedMeeting(meeting)) {
+    return null;
+  }
+
   const runners = (race.runners ?? [])
     .filter((runner) => runner.no && String(runner.status ?? "").toUpperCase() !== "SCRATCHED")
     .map((runner): HkjcRunner => ({
@@ -451,18 +494,19 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
 }
 
 export function parseHkjcRaceCardGraphql(json: HkjcGraphqlResponse, request: RaceRequest = {}) {
-  const requestedRaceDate = normalizeRaceDateForGraphql(request.raceDate);
-  const meetings = json.data?.raceMeetings ?? [];
+  const sanitizedRequest = sanitizeRaceRequest(request);
+  const requestedRaceDate = normalizeRaceDateForGraphql(sanitizedRequest.raceDate);
+  const meetings = (json.data?.raceMeetings ?? []).filter(isAllowedMeeting);
   const matchingMeetings = meetings.filter((meeting) => {
     if (requestedRaceDate && meeting.date !== requestedRaceDate) {
       return false;
     }
 
-    return !request.racecourse || meeting.venueCode === request.racecourse;
+    return !sanitizedRequest.racecourse || meeting.venueCode === sanitizedRequest.racecourse;
   });
 
   for (const meeting of matchingMeetings.length ? matchingMeetings : meetings) {
-    const race = chooseGraphqlRace(meeting, request.raceNo);
+    const race = chooseGraphqlRace(meeting, sanitizedRequest.raceNo);
     if (!race) {
       continue;
     }
@@ -477,6 +521,7 @@ export function parseHkjcRaceCardGraphql(json: HkjcGraphqlResponse, request: Rac
 }
 
 async function getHkjcRaceCardFromGraphql(request: RaceRequest = {}) {
+  const sanitizedRequest = sanitizeRaceRequest(request);
   const response = await fetch(HKJC_GRAPHQL_URL, {
     method: "POST",
     headers: {
@@ -487,8 +532,8 @@ async function getHkjcRaceCardFromGraphql(request: RaceRequest = {}) {
     body: JSON.stringify({
       query: HKJC_RACE_MEETINGS_QUERY,
       variables: {
-        date: normalizeRaceDateForGraphql(request.raceDate),
-        venueCode: request.racecourse,
+        date: normalizeRaceDateForGraphql(sanitizedRequest.raceDate),
+        venueCode: sanitizedRequest.racecourse,
       },
     }),
     next: { revalidate: HKJC_CACHE_SECONDS },
@@ -553,7 +598,13 @@ function parseRaceOptions($: ReturnType<typeof load>, currentRace: HkjcRaceOptio
       const raceDate = getSearchParamCaseInsensitive(url, "racedate") || currentRace.raceDate;
       const racecourseCode = getSearchParamCaseInsensitive(url, "Racecourse") || currentRace.racecourseCode;
 
-      if (Number.isInteger(raceNo) && raceNo > 0 && raceDate && racecourseCode) {
+      if (
+        Number.isInteger(raceNo) &&
+        raceNo > 0 &&
+        raceDate &&
+        racecourseCode === currentRace.racecourseCode &&
+        isMainHkjcRacecourse(racecourseCode)
+      ) {
         options.set(raceNo, { raceNo, raceDate, racecourseCode });
       }
     });
@@ -612,6 +663,11 @@ export function parseHkjcRaceCardHtml(html: string, sourceUrl = HKJC_RACECARD_UR
   const details = parseRaceDetails(detailsLine);
   const prize = parsePrizeLine(prizeLine);
   const params = parseRaceParams($, sourceUrl);
+  const racecourse = normalizeText(meetingMatch[2] ?? "");
+  if (!isMainHkjcRacecourse(params.racecourseCode) && !isMainHkjcRacecourse(racecourse)) {
+    return null;
+  }
+
   const raceNo = Number(titleMatch[1]);
   const currentRace = {
     raceNo,
@@ -662,7 +718,7 @@ export function parseHkjcRaceCardHtml(html: string, sourceUrl = HKJC_RACECARD_UR
     raceNo,
     raceName: normalizeText(titleMatch[2] ?? ""),
     meetingDate: normalizeText(meetingMatch[1] ?? ""),
-    racecourse: normalizeText(meetingMatch[2] ?? ""),
+    racecourse,
     startTime: normalizeText(meetingMatch[3] ?? ""),
     ...details,
     ...prize,
@@ -674,10 +730,11 @@ export function parseHkjcRaceCardHtml(html: string, sourceUrl = HKJC_RACECARD_UR
 }
 
 export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
-  const sourceUrl = buildRaceCardUrl(request);
+  const sanitizedRequest = sanitizeRaceRequest(request);
+  const sourceUrl = buildRaceCardUrl(sanitizedRequest);
 
   try {
-    const graphqlRaceCard = await getHkjcRaceCardFromGraphql(request).catch(() => null);
+    const graphqlRaceCard = await getHkjcRaceCardFromGraphql(sanitizedRequest).catch(() => null);
     if (graphqlRaceCard) {
       return { ok: true, raceCard: await hydrateRaceCardOdds(graphqlRaceCard) };
     }
