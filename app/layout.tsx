@@ -5,7 +5,6 @@ import { AdminMobileMenu } from "@/components/admin-mobile-menu";
 import { LanguageSwitch } from "@/components/language-switch";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { getCurrentUser } from "@/lib/auth";
-import { ensureBootstrapData } from "@/lib/bootstrap";
 import { formatCoins } from "@/lib/format";
 import { getTranslations } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
@@ -21,7 +20,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await ensureBootstrapData();
   const [user, language] = await Promise.all([getCurrentUser(), getCurrentLanguage()]);
   const t = getTranslations(language);
   const isPlayer = user?.role === "player";

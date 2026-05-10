@@ -44,6 +44,19 @@ npm.cmd run db:setup
 
 `db:setup` is the supported local database setup command for this project. It creates the SQLite tables, ensures app settings exist, and seeds the first admin from environment variables.
 
+## Vercel
+
+Set these environment variables in Vercel before deploying:
+
+```txt
+DATABASE_URL="file:./dev.db"
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="change-this-password"
+SESSION_SECRET="replace-with-a-long-random-string"
+```
+
+SQLite files are not persistent storage on Vercel serverless deployments. For production use, move the Prisma datasource to a hosted database and update `DATABASE_URL` accordingly.
+
 ## Admin Flow
 
 - Public signup creates pending player accounts with 0 coins.

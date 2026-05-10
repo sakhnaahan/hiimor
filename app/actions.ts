@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, destroySession, requireAdmin, requireApprovedUser } from "@/lib/auth";
+import { ensureBootstrapData } from "@/lib/bootstrap";
 import {
   changePasswordSchema,
   coinAdjustmentSchema,
@@ -42,6 +43,8 @@ async function localizedIssueMessage(message: string | undefined, fallback: stri
 }
 
 export async function signupAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await ensureBootstrapData();
+
   const parsed = signupSchema.safeParse({
     username: formValue(formData, "username"),
     password: formValue(formData, "password"),
@@ -72,6 +75,8 @@ export async function signupAction(_: ActionState, formData: FormData): Promise<
 }
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await ensureBootstrapData();
+
   const parsed = loginSchema.safeParse({
     username: formValue(formData, "username"),
     password: formValue(formData, "password"),
