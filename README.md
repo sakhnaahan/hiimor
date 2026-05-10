@@ -1,6 +1,6 @@
 # Private Horse Race
 
-Private instant horse race betting app built with Next.js, Prisma, SQLite, and custom session auth.
+Private instant horse race betting app built with Next.js, Prisma, PostgreSQL, and signed cookie auth.
 
 ## Setup
 
@@ -13,13 +13,13 @@ npm.cmd install
 2. Copy `.env.example` to `.env` and set:
 
 ```txt
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
 ```
 
-3. Create the SQLite database and seed the first admin:
+3. Push the Prisma schema and seed the first admin:
 
 ```powershell
 npm.cmd run db:setup
@@ -42,20 +42,20 @@ npm.cmd run build
 npm.cmd run db:setup
 ```
 
-`db:setup` is the supported local database setup command for this project. It creates the SQLite tables, ensures app settings exist, and seeds the first admin from environment variables.
+`db:setup` is the supported local database setup command for this project. It pushes the Prisma schema, ensures app settings exist, and seeds the first admin from environment variables.
 
 ## Vercel
 
-Set these environment variables in Vercel before deploying:
+This project is connected to Prisma Postgres on Vercel. Keep these environment variables set before deploying:
 
 ```txt
-DATABASE_URL="file:/tmp/hiimor.db"
+DATABASE_URL="postgresql://..."
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
 ```
 
-`/tmp` is the writable directory for SQLite on Vercel serverless functions. SQLite files are not persistent storage on Vercel serverless deployments, so this is suitable only for testing. For production use, move the Prisma datasource to a hosted database and update `DATABASE_URL` accordingly.
+The Vercel build runs `prisma db push` before `next build`, so the hosted PostgreSQL schema is kept in sync on deployment.
 
 ## Admin Flow
 
