@@ -8,3 +8,5 @@ node_modules
 *.db-journal
 *.sqlite
 *.sqlite-journal
+
+.vercel
