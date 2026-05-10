@@ -42,8 +42,21 @@ async function localizedIssueMessage(message: string | undefined, fallback: stri
   return localizedMessage(message ?? fallback);
 }
 
+async function ensureDatabaseReady(): Promise<ActionState | null> {
+  try {
+    await ensureBootstrapData();
+    return null;
+  } catch (error) {
+    console.error("Database bootstrap failed", error);
+    return { message: await localizedMessage("Database is not available. Check Vercel DATABASE_URL and storage setup.") };
+  }
+}
+
 export async function signupAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  await ensureBootstrapData();
+  const databaseError = await ensureDatabaseReady();
+  if (databaseError) {
+    return databaseError;
+  }
 
   const parsed = signupSchema.safeParse({
     username: formValue(formData, "username"),
@@ -75,7 +88,10 @@ export async function signupAction(_: ActionState, formData: FormData): Promise<
 }
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  await ensureBootstrapData();
+  const databaseError = await ensureDatabaseReady();
+  if (databaseError) {
+    return databaseError;
+  }
 
   const parsed = loginSchema.safeParse({
     username: formValue(formData, "username"),

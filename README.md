@@ -49,13 +49,13 @@ npm.cmd run db:setup
 Set these environment variables in Vercel before deploying:
 
 ```txt
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="file:/tmp/hiimor.db"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
 ```
 
-SQLite files are not persistent storage on Vercel serverless deployments. For production use, move the Prisma datasource to a hosted database and update `DATABASE_URL` accordingly.
+`/tmp` is the writable directory for SQLite on Vercel serverless functions. SQLite files are not persistent storage on Vercel serverless deployments, so this is suitable only for testing. For production use, move the Prisma datasource to a hosted database and update `DATABASE_URL` accordingly.
 
 ## Admin Flow
 
