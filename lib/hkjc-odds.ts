@@ -1,5 +1,6 @@
 const HKJC_GRAPHQL_URL = "https://info.cld.hkjc.com/graphql/base/";
 const HKJC_ODDS_CACHE_SECONDS = 60;
+const HKJC_FETCH_TIMEOUT_MS = 10_000;
 
 type HkjcOddsNode = {
   combString: string;
@@ -114,6 +115,7 @@ export async function getHkjcWinOdds({
       "content-type": "application/json",
       "user-agent": "private-horse-race/0.1 (+https://bet.hkjc.com)",
     },
+    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
     body: JSON.stringify({
       query: WIN_ODDS_QUERY,
       variables: {

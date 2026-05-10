@@ -4,6 +4,7 @@ import { getHkjcWinOdds, isHkjcWinPoolOpen } from "@/lib/hkjc-odds";
 const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racecard";
 const HKJC_GRAPHQL_URL = "https://info.cld.hkjc.com/graphql/base/";
 const HKJC_CACHE_SECONDS = 60;
+const HKJC_FETCH_TIMEOUT_MS = 10_000;
 
 const HKJC_RACE_MEETINGS_QUERY = `
 fragment raceFragment on Race {
@@ -482,6 +483,7 @@ async function getHkjcRaceCardFromGraphql(request: RaceRequest = {}) {
       "content-type": "application/json",
       "user-agent": "private-horse-race/0.1 (+https://bet.hkjc.com)",
     },
+    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
     body: JSON.stringify({
       query: HKJC_RACE_MEETINGS_QUERY,
       variables: {
@@ -684,6 +686,7 @@ export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promis
       headers: {
         "user-agent": "private-horse-race/0.1 (+https://racing.hkjc.com)",
       },
+      signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
       next: { revalidate: HKJC_CACHE_SECONDS },
     });
 

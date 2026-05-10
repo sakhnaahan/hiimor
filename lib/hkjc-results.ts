@@ -2,6 +2,7 @@ import { load } from "cheerio";
 
 const HKJC_RESULTS_URL = "https://racing.hkjc.com/en-us/local/information/localresults";
 const HKJC_RESULTS_CACHE_SECONDS = 60;
+const HKJC_FETCH_TIMEOUT_MS = 10_000;
 
 export type HkjcRaceResultRunner = {
   place: string;
@@ -103,6 +104,7 @@ export async function getHkjcRaceResult(request: HkjcRaceResultRequest) {
     headers: {
       "user-agent": "private-horse-race/0.1 (+https://racing.hkjc.com)",
     },
+    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
     next: { revalidate: HKJC_RESULTS_CACHE_SECONDS },
   });
 

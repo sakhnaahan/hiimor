@@ -1,5 +1,6 @@
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureBootstrapData } from "@/lib/bootstrap";
 import { formatCoins, formatDate } from "@/lib/format";
 import { settlePendingHkjcBets } from "@/lib/hkjc-settlement";
 import { SettlementPoller } from "@/components/settlement-poller";
@@ -42,6 +43,7 @@ function formatRaceMeta(
 
 export default async function HistoryPage() {
   const user = await requireApprovedUser();
+  await ensureBootstrapData();
   const language = await getCurrentLanguage();
   const t = getTranslations(language);
   await settlePendingHkjcBets({ userId: user.id });

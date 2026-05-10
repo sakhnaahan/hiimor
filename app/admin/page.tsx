@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import { ensureBootstrapData } from "@/lib/bootstrap";
+import { requireAdmin } from "@/lib/auth";
 import { formatCoins } from "@/lib/format";
 import { getTranslations } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
 export default async function AdminPage() {
+  await requireAdmin();
+  await ensureBootstrapData();
   const language = await getCurrentLanguage();
   const t = getTranslations(language);
   const todayStart = new Date();

@@ -73,7 +73,7 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
           raceDate: race.hkjcRaceDate!,
           racecourseCode: race.hkjcRacecourseCode!,
           raceNo: race.hkjcRaceNo!,
-        }),
+        }).catch(() => null),
       );
     }
 

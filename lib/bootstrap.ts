@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 let bootstrapped = false;
+let bootstrapPromise: Promise<void> | null = null;
 
 async function execute(sql: string) {
   await prisma.$executeRawUnsafe(sql);
@@ -118,11 +119,7 @@ async function ensureSqliteSchema() {
   `);
 }
 
-export async function ensureBootstrapData() {
-  if (bootstrapped) {
-    return;
-  }
-
+async function bootstrapData() {
   await ensureSqliteSchema();
 
   await prisma.appSettings.upsert({
@@ -151,4 +148,17 @@ export async function ensureBootstrapData() {
   }
 
   bootstrapped = true;
+}
+
+export async function ensureBootstrapData() {
+  if (bootstrapped) {
+    return;
+  }
+
+  bootstrapPromise ??= bootstrapData().catch((error) => {
+    bootstrapPromise = null;
+    throw error;
+  });
+
+  await bootstrapPromise;
 }

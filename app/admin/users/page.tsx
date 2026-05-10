@@ -8,11 +8,13 @@ import {
 import { RechargeForm, ResetPasswordForm, SubtractCoinsForm } from "@/components/admin-forms";
 import { requireAdmin } from "@/lib/auth";
 import { isMainAdminUsername } from "@/lib/admin";
+import { ensureBootstrapData } from "@/lib/bootstrap";
 import { getTranslations, roleLabel, statusLabel } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
 export default async function AdminUsersPage() {
   const currentAdmin = await requireAdmin();
+  await ensureBootstrapData();
   const language = await getCurrentLanguage();
   const t = getTranslations(language);
   const users = await prisma.user.findMany({ orderBy: [{ status: "asc" }, { username: "asc" }] });

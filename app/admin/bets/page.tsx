@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { ensureBootstrapData } from "@/lib/bootstrap";
+import { requireAdmin } from "@/lib/auth";
 import { formatCoins, formatDate } from "@/lib/format";
 import { getTranslations, resultLabel } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
@@ -16,6 +18,8 @@ function resultBadgeClass(result: string) {
 }
 
 export default async function AdminBetsPage() {
+  await requireAdmin();
+  await ensureBootstrapData();
   const language = await getCurrentLanguage();
   const t = getTranslations(language);
   const bets = await prisma.raceResult.findMany({

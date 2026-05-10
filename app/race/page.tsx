@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureBootstrapData } from "@/lib/bootstrap";
 import { RaceForm } from "@/components/race-form";
 import { RaceAutoRefresh } from "@/components/race-auto-refresh";
 import { RaceSummaryHeader } from "@/components/race-summary-header";
@@ -19,6 +20,7 @@ export default async function RacePage({
   searchParams?: Promise<{ raceDate?: string; racecourse?: string; raceNo?: string }>;
 }) {
   const user = await requireApprovedUser();
+  await ensureBootstrapData();
   const language = await getCurrentLanguage();
   const t = getTranslations(language);
   const isAdmin = user.role === "admin";
