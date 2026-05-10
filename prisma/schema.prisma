@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  username         String            @unique
+  passwordHash     String            @map("password_hash")
+  role             String            @default("player")
+  status           String            @default("pending")
+  coinBalance      Int               @default(0) @map("coin_balance")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  sessions         Session[]
+  transactions     CoinTransaction[] @relation("UserTransactions")
+  adminActions     CoinTransaction[] @relation("AdminTransactions")
+  raceResults      RaceResult[]
+  auditLogs        AdminAuditLog[]   @relation("AdminAuditLogs")
+  targetedAuditLog AdminAuditLog[]   @relation("TargetUserAuditLogs")
+
+  @@map("users")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @map("token_hash")
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model CoinTransaction {
+  id            Int                 @id @default(autoincrement())
+  userId        Int                 @map("user_id")
+  type          String
+  amount        Int
+  balanceBefore Int                 @map("balance_before")
+  balanceAfter  Int                 @map("balance_after")
+  relatedRaceId Int?                @map("related_race_id")
+  adminId       Int?                @map("admin_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  user          User                @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  admin         User?               @relation("AdminTransactions", fields: [adminId], references: [id], onDelete: SetNull)
+  race          RaceResult?         @relation(fields: [relatedRaceId], references: [id], onDelete: SetNull)
+
+  @@map("coin_transactions")
+}
+
+model RaceResult {
+  id                  Int               @id @default(autoincrement())
+  userId              Int               @map("user_id")
+  selectedHorse       String            @map("selected_horse")
+  selectedHorseNo     String?           @map("selected_horse_no")
+  winningHorse        String            @map("winning_horse")
+  winningHorseNo      String?           @map("winning_horse_no")
+  betAmount           Int               @map("bet_amount")
+  multiplierUsed      Float             @map("multiplier_used")
+  payout              Int
+  result              String
+  hkjcRaceDate        String?           @map("hkjc_race_date")
+  hkjcRacecourseCode  String?           @map("hkjc_racecourse_code")
+  hkjcRacecourseName  String?           @map("hkjc_racecourse_name")
+  hkjcRaceNo          Int?              @map("hkjc_race_no")
+  hkjcRaceName        String?           @map("hkjc_race_name")
+  hkjcRaceStartTime   String?           @map("hkjc_race_start_time")
+  settledAt           DateTime?         @map("settled_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        CoinTransaction[]
+
+  @@map("race_results")
+}
+
+model AppSettings {
+  id               Int      @id @default(1)
+  payoutMultiplier Float    @default(2.0) @map("payout_multiplier")
+  adminContactText String   @default("Contact the admin to recharge your coin balance.") @map("admin_contact_text")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+model AdminAuditLog {
+  id           Int             @id @default(autoincrement())
+  adminId      Int             @map("admin_id")
+  actionType   String   @map("action_type")
+  targetUserId Int?            @map("target_user_id")
+  oldValue     String?         @map("old_value")
+  newValue     String?         @map("new_value")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  admin        User            @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
+  targetUser   User?           @relation("TargetUserAuditLogs", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@map("admin_audit_logs")
+}

@@ -1,0 +1,10 @@
+.next
+node_modules
+.env
+.next-*.err
+.next-*.log
+*.tsbuildinfo
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
