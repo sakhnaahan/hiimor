@@ -3,13 +3,14 @@ import test from "node:test";
 import { HORSES } from "@/lib/constants";
 import { isMainAdminUsername } from "@/lib/admin";
 import { applyRaceBalance, calculateRaceOutcome } from "@/lib/game";
-import { calculateMarketChance } from "@/lib/hkjc-odds";
+import { calculateMarketChance, parseHkjcRunnerOddsResponse } from "@/lib/hkjc-odds";
 import { canResetUserPassword, generateTemporaryPassword } from "@/lib/password-reset";
 import {
   changePasswordSchema,
   coinAdjustmentSchema,
   passwordResetSchema,
   passwordSchema,
+  raceBasketSchema,
   raceSchema,
   rechargeSchema,
   roleChangeSchema,
@@ -59,16 +60,113 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
   assert.equal(passwordResetSchema.safeParse({ userId: "0" }).success, false);
   const validRaceBet = {
     selectedHorseNo: "1",
+    betType: "WIN",
     raceDate: "2026/05/09",
     racecourseCode: "ST",
     raceNo: "1",
     quotedWinOdds: "4.8",
+    quotedPlaceOdds: "1.8",
     betAmount: "50",
   };
   assert.equal(raceSchema.safeParse(validRaceBet).success, true);
+  assert.equal(raceSchema.safeParse({ ...validRaceBet, betType: "PLACE", quotedWinOdds: "" }).success, true);
+  assert.equal(raceSchema.safeParse({ ...validRaceBet, betType: "WIN_PLACE" }).success, true);
+  assert.equal(raceSchema.safeParse({ ...validRaceBet, betType: "WIN_PLACE", quotedPlaceOdds: "" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, selectedHorseNo: "" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, racecourseCode: "S1" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, betAmount: "0" }).success, false);
+  const validBasketBet = {
+    raceDate: "2026/05/09",
+    racecourseCode: "ST",
+    raceNo: "1",
+    basketItems: JSON.stringify([
+      {
+        selectedHorseNo: "1",
+        betType: "WIN",
+        quotedWinOdds: "4.8",
+        quotedPlaceOdds: "",
+        unitBetAmount: "50",
+      },
+      {
+        selectedHorseNo: "2",
+        betType: "WIN_PLACE",
+        quotedWinOdds: "6.2",
+        quotedPlaceOdds: "1.9",
+        unitBetAmount: "25",
+      },
+    ]),
+  };
+  assert.equal(raceBasketSchema.safeParse(validBasketBet).success, true);
+  assert.equal(
+    raceBasketSchema.safeParse({
+      ...validBasketBet,
+      basketItems: JSON.stringify([
+        {
+          selectedHorseNo: "1",
+          selectedPlaceHorseNo: "2",
+          betType: "WIN_PLACE_COMBO",
+          quotedWinOdds: "4.8",
+          quotedPlaceOdds: "1.9",
+          unitBetAmount: "25",
+        },
+      ]),
+    }).success,
+    true,
+  );
+  assert.equal(
+    raceBasketSchema.safeParse({
+      ...validBasketBet,
+      basketItems: JSON.stringify([
+        {
+          selectedHorseNo: "1",
+          selectedPlaceHorseNo: "1",
+          betType: "WIN_PLACE_COMBO",
+          quotedWinOdds: "4.8",
+          quotedPlaceOdds: "1.9",
+          unitBetAmount: "25",
+        },
+      ]),
+    }).success,
+    false,
+  );
+  assert.equal(
+    raceBasketSchema.safeParse({
+      ...validBasketBet,
+      basketItems: JSON.stringify([
+        {
+          selectedHorseNo: "2",
+          betType: "WIN_PLACE",
+          quotedWinOdds: "6.2",
+          quotedPlaceOdds: "",
+          unitBetAmount: "25",
+        },
+      ]),
+    }).success,
+    false,
+  );
+  assert.equal(
+    raceBasketSchema.safeParse({
+      ...validBasketBet,
+      basketItems: JSON.stringify([
+        {
+          selectedHorseNo: "1",
+          betType: "WIN",
+          quotedWinOdds: "4.8",
+          quotedPlaceOdds: "",
+          unitBetAmount: "50",
+        },
+        {
+          selectedHorseNo: "1",
+          betType: "WIN",
+          quotedWinOdds: "4.8",
+          quotedPlaceOdds: "",
+          unitBetAmount: "50",
+        },
+      ]),
+    }).success,
+    false,
+  );
+  assert.equal(raceBasketSchema.safeParse({ ...validBasketBet, basketItems: "not-json" }).success, false);
   assert.equal(roleChangeSchema.safeParse({ userId: "1", role: "admin" }).success, true);
   assert.equal(roleChangeSchema.safeParse({ userId: "1", role: "owner" }).success, false);
 });
@@ -113,6 +211,48 @@ test("market chance derives from decimal win odds", () => {
   assert.equal(calculateMarketChance("2.0"), 50);
   assert.equal(calculateMarketChance("5.5"), 18.2);
   assert.equal(calculateMarketChance("bad"), null);
+});
+
+test("HKJC odds parser combines win and place pool odds by runner", () => {
+  const odds = parseHkjcRunnerOddsResponse({
+    data: {
+      raceMeetings: [
+        {
+          pmPools: [
+            {
+              oddsType: "WIN",
+              status: "START_SELL",
+              sellStatus: "START_SELL",
+              lastUpdateTime: "10:00",
+              oddsNodes: [{ combString: "01", oddsValue: "4.8", hotFavourite: true }],
+            },
+            {
+              oddsType: "PLA",
+              status: "START_SELL",
+              sellStatus: "START_SELL",
+              lastUpdateTime: "10:01",
+              oddsNodes: [{ combString: "1", oddsValue: "1.7", hotFavourite: false }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(odds[0], {
+    horseNo: "1",
+    winOdds: "4.8",
+    marketChance: 20.8,
+    hotFavourite: true,
+    poolStatus: "START_SELL",
+    sellStatus: "START_SELL",
+    lastUpdateTime: "10:00",
+    placeOdds: "1.7",
+    placeMarketChance: 58.8,
+    placePoolStatus: "START_SELL",
+    placeSellStatus: "START_SELL",
+    placeLastUpdateTime: "10:01",
+  });
 });
 
 test("main admin helper matches ADMIN_USERNAME", () => {

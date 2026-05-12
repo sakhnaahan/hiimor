@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { isMainHkjcRacecourse } from "@/lib/hkjc-racecard";
 
+const raceSingleBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE"]);
+const raceBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE", "WIN_PLACE_COMBO"]);
+
 export const usernameSchema = z
   .string()
   .trim()
@@ -46,6 +49,7 @@ export const changePasswordSchema = z
 
 export const raceSchema = z.object({
   selectedHorseNo: z.string().trim().min(1, "Choose a horse.").max(10, "Horse number is too long."),
+  betType: raceSingleBetTypeSchema.default("WIN"),
   raceDate: z.string().trim().min(1, "Race date is required.").max(20),
   racecourseCode: z
     .string()
@@ -54,8 +58,116 @@ export const raceSchema = z.object({
     .max(10)
     .refine(isMainHkjcRacecourse, "Only Sha Tin and Happy Valley races are available."),
   raceNo: z.coerce.number().int().positive().max(99),
-  quotedWinOdds: z.string().trim().min(1, "Odds are unavailable. Try again shortly.").max(20),
+  quotedWinOdds: z.string().trim().max(20).optional().default(""),
+  quotedPlaceOdds: z.string().trim().max(20).optional().default(""),
   betAmount: z.coerce.number().int().positive().max(1_000_000),
+}).superRefine((value, context) => {
+  if ((value.betType === "WIN" || value.betType === "WIN_PLACE") && !value.quotedWinOdds) {
+    context.addIssue({
+      code: "custom",
+      message: "Odds are unavailable. Try again shortly.",
+      path: ["quotedWinOdds"],
+    });
+  }
+
+  if ((value.betType === "PLACE" || value.betType === "WIN_PLACE") && !value.quotedPlaceOdds) {
+    context.addIssue({
+      code: "custom",
+      message: "Odds are unavailable. Try again shortly.",
+      path: ["quotedPlaceOdds"],
+    });
+  }
+});
+
+const raceBasketItemSchema = z.object({
+  selectedHorseNo: z.string().trim().min(1, "Choose a horse.").max(10, "Horse number is too long."),
+  selectedPlaceHorseNo: z.string().trim().max(10, "Horse number is too long.").optional().default(""),
+  betType: raceBetTypeSchema,
+  quotedWinOdds: z.string().trim().max(20).optional().default(""),
+  quotedPlaceOdds: z.string().trim().max(20).optional().default(""),
+  unitBetAmount: z.coerce.number().int().positive().max(1_000_000),
+}).superRefine((value, context) => {
+  if ((value.betType === "WIN" || value.betType === "WIN_PLACE") && !value.quotedWinOdds) {
+    context.addIssue({
+      code: "custom",
+      message: "Odds are unavailable. Try again shortly.",
+      path: ["quotedWinOdds"],
+    });
+  }
+
+  if ((value.betType === "PLACE" || value.betType === "WIN_PLACE") && !value.quotedPlaceOdds) {
+    context.addIssue({
+      code: "custom",
+      message: "Odds are unavailable. Try again shortly.",
+      path: ["quotedPlaceOdds"],
+    });
+  }
+
+  if (value.betType === "WIN_PLACE_COMBO") {
+    if (!value.selectedPlaceHorseNo) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a place horse.",
+        path: ["selectedPlaceHorseNo"],
+      });
+    }
+
+    if (value.selectedPlaceHorseNo && value.selectedPlaceHorseNo === value.selectedHorseNo) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose two different horses.",
+        path: ["selectedPlaceHorseNo"],
+      });
+    }
+
+    if (!value.quotedWinOdds || !value.quotedPlaceOdds) {
+      context.addIssue({
+        code: "custom",
+        message: "Odds are unavailable. Try again shortly.",
+        path: ["quotedWinOdds"],
+      });
+    }
+  }
+});
+
+function parseBasketItems(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+export const raceBasketSchema = z.object({
+  raceDate: z.string().trim().min(1, "Race date is required.").max(20),
+  racecourseCode: z
+    .string()
+    .trim()
+    .min(1, "Racecourse is required.")
+    .max(10)
+    .refine(isMainHkjcRacecourse, "Only Sha Tin and Happy Valley races are available."),
+  raceNo: z.coerce.number().int().positive().max(99),
+  basketItems: z.preprocess(parseBasketItems, z.array(raceBasketItemSchema).min(1, "Choose a horse.").max(40)),
+}).superRefine((value, context) => {
+  const keys = new Set<string>();
+
+  value.basketItems.forEach((item, index) => {
+    const key = `${item.selectedHorseNo}:${item.betType}:${item.selectedPlaceHorseNo}`;
+    if (keys.has(key)) {
+      context.addIssue({
+        code: "custom",
+        message: "Invalid race bet.",
+        path: ["basketItems", index],
+      });
+      return;
+    }
+
+    keys.add(key);
+  });
 });
 
 export const rechargeSchema = z.object({

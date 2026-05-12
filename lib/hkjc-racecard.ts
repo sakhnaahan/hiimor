@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import { calculateMarketChance, getHkjcWinOdds, isHkjcWinPoolOpen } from "@/lib/hkjc-odds";
+import { calculateMarketChance, getHkjcRunnerOdds, isHkjcPoolOpen } from "@/lib/hkjc-odds";
 
 const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racecard";
 const HKJC_FIXTURE_URL = "https://racing.hkjc.com/en-us/local/information/fixture";
@@ -219,6 +219,9 @@ export type HkjcRunner = {
   marketChance?: number;
   hotFavourite?: boolean;
   oddsAvailable?: boolean;
+  placeOdds?: string;
+  placeMarketChance?: number;
+  placeOddsAvailable?: boolean;
   oddsLastUpdateTime?: string;
 };
 
@@ -933,13 +936,16 @@ function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceRequest = 
         sex: "",
         daysSinceLastRun: "",
         gear: "",
-        winOdds,
-        marketChance: calculateMarketChance(winOdds) ?? undefined,
-        hotFavourite: index === 0,
-        oddsAvailable: true,
-        oddsLastUpdateTime,
-      };
-    }),
+      winOdds,
+      marketChance: calculateMarketChance(winOdds) ?? undefined,
+      hotFavourite: index === 0,
+      oddsAvailable: true,
+      placeOdds: String(Math.max(1.1, Math.round((Number(winOdds) / 2) * 10) / 10)),
+      placeMarketChance: calculateMarketChance(String(Math.max(1.1, Math.round((Number(winOdds) / 2) * 10) / 10))) ?? undefined,
+      placeOddsAvailable: true,
+      oddsLastUpdateTime,
+    };
+  }),
   };
 }
 
@@ -1025,7 +1031,7 @@ async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
     return raceCard;
   }
 
-  const odds = await getHkjcWinOdds({
+  const odds = await getHkjcRunnerOdds({
     raceDate: raceCard.raceDate,
     racecourseCode: raceCard.racecourseCode,
     raceNo: raceCard.raceNo,
@@ -1038,10 +1044,11 @@ async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
       ? {
           ...runner,
           ...runnerOdds,
-          oddsAvailable: isHkjcWinPoolOpen(runnerOdds.poolStatus, runnerOdds.sellStatus),
-          oddsLastUpdateTime: runnerOdds.lastUpdateTime,
+          oddsAvailable: isHkjcPoolOpen(runnerOdds.poolStatus, runnerOdds.sellStatus),
+          placeOddsAvailable: isHkjcPoolOpen(runnerOdds.placePoolStatus, runnerOdds.placeSellStatus),
+          oddsLastUpdateTime: runnerOdds.lastUpdateTime || runnerOdds.placeLastUpdateTime,
         }
-      : { ...runner, oddsAvailable: false };
+      : { ...runner, oddsAvailable: false, placeOddsAvailable: false };
   });
   raceCard.oddsAvailable = raceCard.runners.some((runner) => runner.oddsAvailable);
   raceCard.oddsLastUpdateTime = odds.find((entry) => entry.lastUpdateTime)?.lastUpdateTime ?? "";

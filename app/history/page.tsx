@@ -80,6 +80,7 @@ export default async function HistoryPage() {
                 <div>
                   <span className="badge-label">{t.picked}</span>
                   <strong>{race.selectedHorse}</strong>
+                  <span className="muted">{race.betType}</span>
                 </div>
                 <div>
                   <span className="badge-label">{t.race}</span>
@@ -121,8 +122,9 @@ export default async function HistoryPage() {
                   <div>
                     <span className="badge-label">{t.picked}</span>
                     <strong>{race.selectedHorse}</strong>
-                    <span className="muted">{t.no} {race.selectedHorseNo ?? "-"}</span>
-                  </div>
+                  <span className="muted">{t.no} {race.selectedHorseNo ?? "-"}</span>
+                  <span className="muted">{race.betType}</span>
+                </div>
                   <div>
                     <span className="badge-label">{t.winner}</span>
                     <strong>{race.winningHorse || t.waitingResult}</strong>
@@ -133,8 +135,12 @@ export default async function HistoryPage() {
                     <strong>{formatCoins(race.betAmount, language)}</strong>
                   </div>
                   <div>
-                    <span className="badge-label">{t.odds}</span>
+                    <span className="badge-label">{t.multiplier}</span>
                     <strong>{race.multiplierUsed}x</strong>
+                  </div>
+                  <div>
+                    <span className="badge-label">Finish</span>
+                    <strong>{race.selectedFinishPlace ?? "-"}</strong>
                   </div>
                   <div>
                     <span className="badge-label">{t.net}</span>
@@ -160,6 +166,7 @@ export default async function HistoryPage() {
                 <th>{t.time}</th>
                 <th>{t.race}</th>
                 <th>{t.picked}</th>
+                <th>Bet Type</th>
                 <th>{t.winner}</th>
                 <th>{t.bet}</th>
                 <th>{t.multiplier}</th>
@@ -184,6 +191,10 @@ export default async function HistoryPage() {
                     <td>
                       <strong>{race.selectedHorse}</strong>
                       <span className="runner-subtext">{t.no} {race.selectedHorseNo ?? "-"}</span>
+                    </td>
+                    <td>
+                      <strong>{race.betType}</strong>
+                      <span className="runner-subtext">Finish {race.selectedFinishPlace ?? "-"}</span>
                     </td>
                     <td>
                       <strong>{race.winningHorse || t.waitingResult}</strong>

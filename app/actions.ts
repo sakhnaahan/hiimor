@@ -11,6 +11,7 @@ import {
   coinAdjustmentSchema,
   loginSchema,
   passwordResetSchema,
+  raceBasketSchema,
   raceSchema,
   rechargeSchema,
   roleChangeSchema,
@@ -18,12 +19,17 @@ import {
   userIdSchema,
 } from "@/lib/validation";
 import { getHkjcUpcomingRaceCard, isLocalMainRaceCard } from "@/lib/hkjc-racecard";
-import { validateLockedWinOddsQuote } from "@/lib/race-betting-ui";
+import {
+  getBetLineTypes,
+  isPlaceWinningPosition,
+  validateLockedOddsQuote,
+  validateLockedWinOddsQuote,
+  type RaceBetLineType,
+} from "@/lib/race-betting-ui";
 import { isMainAdminUsername } from "@/lib/admin";
 import { canResetUserPassword, generateTemporaryPassword } from "@/lib/password-reset";
 import { getCurrentLanguage } from "@/lib/language";
 import { translateServerMessage } from "@/lib/i18n";
-import { calculateRaceOutcome } from "@/lib/game";
 
 export type ActionState = {
   ok?: boolean;
@@ -363,6 +369,18 @@ export async function resetUserPasswordAction(_: ActionState, formData: FormData
   };
 }
 
+function getLocalRacePlacings<T extends { horseNo: string }>(runners: T[], randomValue: number) {
+  if (runners.length === 0) {
+    return [];
+  }
+
+  const winnerIndex = Math.min(runners.length - 1, Math.max(0, Math.floor(randomValue * runners.length)));
+  return [...runners.slice(winnerIndex), ...runners.slice(0, winnerIndex)].map((runner, index) => ({
+    runner,
+    place: String(index + 1),
+  }));
+}
+
 export async function rechargeUserAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
   const parsed = rechargeSchema.safeParse({
@@ -483,10 +501,12 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
   const user = await requireApprovedUser();
   const parsed = raceSchema.safeParse({
     selectedHorseNo: formData.get("selectedHorseNo"),
+    betType: formData.get("betType"),
     raceDate: formData.get("raceDate"),
     racecourseCode: formData.get("racecourseCode"),
     raceNo: formData.get("raceNo"),
     quotedWinOdds: formData.get("quotedWinOdds"),
+    quotedPlaceOdds: formData.get("quotedPlaceOdds"),
     betAmount: formData.get("betAmount"),
   });
 
@@ -523,35 +543,298 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
     return { message: await localizedMessage("Selected horse is no longer available in the current HKJC racecard.") };
   }
 
-  const oddsValidation = validateLockedWinOddsQuote({
-    quotedWinOdds: parsed.data.quotedWinOdds,
-    currentWinOdds: selectedRunner.winOdds,
-    oddsAvailable: selectedRunner.oddsAvailable,
-  });
-  if (!oddsValidation.ok && oddsValidation.reason === "unavailable") {
-    return { message: await localizedMessage("Odds are unavailable. Try again shortly.") };
+  const betLines: Array<{ type: RaceBetLineType; lockedOdds: number }> = [];
+  for (const lineType of getBetLineTypes(parsed.data.betType)) {
+    const oddsValidation =
+      lineType === "WIN"
+        ? validateLockedWinOddsQuote({
+            quotedWinOdds: parsed.data.quotedWinOdds,
+            currentWinOdds: selectedRunner.winOdds,
+            oddsAvailable: selectedRunner.oddsAvailable,
+          })
+        : validateLockedOddsQuote({
+            quotedOdds: parsed.data.quotedPlaceOdds,
+            currentOdds: selectedRunner.placeOdds,
+            oddsAvailable: selectedRunner.placeOddsAvailable && hkjcRaceCard.raceCard.runners.length >= 4,
+          });
+
+    if (!oddsValidation.ok && oddsValidation.reason === "unavailable") {
+      return { message: await localizedMessage("Odds are unavailable. Try again shortly.") };
+    }
+
+    if (!oddsValidation.ok) {
+      return { message: await localizedMessage("Odds changed. Please confirm again.") };
+    }
+
+    betLines.push({ type: lineType, lockedOdds: oddsValidation.lockedWinOdds });
   }
 
-  if (!oddsValidation.ok) {
-    return { message: await localizedMessage("Odds changed. Please confirm again.") };
-  }
-
-  const localOutcome = isLocalMainRaceCard(hkjcRaceCard.raceCard)
-    ? calculateRaceOutcome(
-        selectedRunner.name,
-        parsed.data.betAmount,
-        oddsValidation.lockedWinOdds,
-        Math.random(),
-        hkjcRaceCard.raceCard.runners.map((runner) => runner.name),
-      )
+  const localPlacings = isLocalMainRaceCard(hkjcRaceCard.raceCard)
+    ? getLocalRacePlacings(hkjcRaceCard.raceCard.runners, Math.random())
     : null;
-  const localWinningRunner = localOutcome
-    ? hkjcRaceCard.raceCard.runners.find((runner) => runner.name === localOutcome.winningHorse)
-    : null;
-  let raceId: number | null = null;
+  const localWinner = localPlacings?.[0]?.runner ?? null;
+  const localSelectedPlace = localPlacings?.find((placing) => placing.runner.horseNo === selectedRunner.horseNo);
+  const raceIds: number[] = [];
 
   try {
-    raceId = await prisma.$transaction(async (tx) => {
+    const createdIds = await prisma.$transaction(async (tx) => {
+      const player = await tx.user.findUnique({ where: { id: user.id } });
+      if (!player || player.status !== "approved") {
+        throw new Error(await localizedMessage("Approved account required."));
+      }
+
+      const totalBetAmount = parsed.data.betAmount * betLines.length;
+      const deduction = await tx.user.updateMany({
+        where: {
+          id: player.id,
+          status: "approved",
+          coinBalance: { gte: totalBetAmount },
+        },
+        data: {
+          coinBalance: { decrement: totalBetAmount },
+        },
+      });
+
+      if (deduction.count !== 1) {
+        throw new Error(await localizedMessage("Insufficient coin balance."));
+      }
+
+      const balanceBefore = player.coinBalance;
+      let betBalanceCursor = balanceBefore;
+      let payoutBalanceCursor = balanceBefore - totalBetAmount;
+      const ids: number[] = [];
+
+      for (const line of betLines) {
+        const localLineWin =
+          line.type === "WIN"
+            ? localWinner?.horseNo === selectedRunner.horseNo
+            : isPlaceWinningPosition(localSelectedPlace?.place, hkjcRaceCard.raceCard.runners.length);
+        const localPayout = localPlacings && localLineWin ? Math.floor(parsed.data.betAmount * line.lockedOdds) : 0;
+
+        const race = await tx.raceResult.create({
+          data: {
+            userId: player.id,
+            selectedHorse: selectedRunner.name,
+            selectedHorseNo: selectedRunner.horseNo,
+            selectedFinishPlace: localSelectedPlace?.place,
+            winningHorse: localWinner?.name ?? "",
+            winningHorseNo: localWinner?.horseNo,
+            betType: line.type,
+            betAmount: parsed.data.betAmount,
+            multiplierUsed: line.lockedOdds,
+            payout: localPayout,
+            result: localPlacings ? (localLineWin ? "WIN" : "LOSS") : "PENDING",
+            hkjcRaceDate: hkjcRaceCard.raceCard.raceDate,
+            hkjcRacecourseCode: hkjcRaceCard.raceCard.racecourseCode,
+            hkjcRacecourseName: hkjcRaceCard.raceCard.racecourse,
+            hkjcRaceNo: hkjcRaceCard.raceCard.raceNo,
+            hkjcRaceName: hkjcRaceCard.raceCard.raceName,
+            hkjcRaceStartTime: hkjcRaceCard.raceCard.startTime,
+            settledAt: localPlacings ? new Date() : null,
+          },
+        });
+        ids.push(race.id);
+
+        await tx.coinTransaction.create({
+          data: {
+            userId: player.id,
+            type: "BET_PLACED",
+            amount: -parsed.data.betAmount,
+            balanceBefore: betBalanceCursor,
+            balanceAfter: betBalanceCursor - parsed.data.betAmount,
+            relatedRaceId: race.id,
+          },
+        });
+        betBalanceCursor -= parsed.data.betAmount;
+
+        if (localPlacings) {
+          if (localPayout > 0) {
+            await tx.coinTransaction.create({
+              data: {
+                userId: player.id,
+                type: "RACE_WIN",
+                amount: localPayout,
+                balanceBefore: payoutBalanceCursor,
+                balanceAfter: payoutBalanceCursor + localPayout,
+                relatedRaceId: race.id,
+              },
+            });
+            payoutBalanceCursor += localPayout;
+          } else {
+            await tx.coinTransaction.create({
+              data: {
+                userId: player.id,
+                type: "RACE_LOSS",
+                amount: 0,
+                balanceBefore: payoutBalanceCursor,
+                balanceAfter: payoutBalanceCursor,
+                relatedRaceId: race.id,
+              },
+            });
+          }
+        }
+      }
+
+      if (localPlacings && payoutBalanceCursor > balanceBefore - totalBetAmount) {
+        await tx.user.update({
+          where: { id: player.id },
+          data: { coinBalance: payoutBalanceCursor },
+        });
+      }
+
+      return ids;
+    });
+    raceIds.push(...createdIds);
+  } catch (error) {
+    return { message: error instanceof Error ? error.message : await localizedMessage("Race failed.") };
+  }
+
+  revalidatePath("/race");
+  revalidatePath("/history");
+  const language = await getCurrentLanguage();
+  if (localPlacings) {
+    return {
+      ok: true,
+      message: `Race #${raceIds.join(", ")} settled. Winner: ${localWinner?.name ?? "-"}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    message:
+      language === "mn"
+        ? `${selectedRunner.name} дээр бооцоо тавигдлаа. Уралдаан #${raceIds.join(", ")} HKJC албан ёсны дүн хүлээж байна.`
+        : `Bet placed on ${selectedRunner.name}. Race #${raceIds.join(", ")} is pending the official HKJC result.`,
+  };
+}
+
+export async function runRaceBasketAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireApprovedUser();
+  const parsed = raceBasketSchema.safeParse({
+    raceDate: formData.get("raceDate"),
+    racecourseCode: formData.get("racecourseCode"),
+    raceNo: formData.get("raceNo"),
+    basketItems: formData.get("basketItems"),
+  });
+
+  if (!parsed.success) {
+    return { message: await localizedIssueMessage(parsed.error.issues[0]?.message, "Invalid race bet.") };
+  }
+
+  const hkjcRaceCard = await getHkjcUpcomingRaceCard({
+    raceDate: parsed.data.raceDate,
+    racecourse: parsed.data.racecourseCode,
+    raceNo: parsed.data.raceNo,
+  });
+
+  if (!hkjcRaceCard.ok) {
+    return { message: await localizedMessage("HKJC racecard is unavailable. Try again shortly.") };
+  }
+
+  if (
+    hkjcRaceCard.raceCard.raceNo !== parsed.data.raceNo ||
+    hkjcRaceCard.raceCard.raceDate !== parsed.data.raceDate ||
+    hkjcRaceCard.raceCard.racecourseCode !== parsed.data.racecourseCode
+  ) {
+    return { message: await localizedMessage("Selected race is no longer available in the current HKJC racecard.") };
+  }
+
+  if (!hkjcRaceCard.raceCard.raceDate || !hkjcRaceCard.raceCard.racecourseCode) {
+    return { message: await localizedMessage("HKJC race identity is unavailable. Try again shortly.") };
+  }
+
+  const localPlacings = isLocalMainRaceCard(hkjcRaceCard.raceCard)
+    ? getLocalRacePlacings(hkjcRaceCard.raceCard.runners, Math.random())
+    : null;
+  const localWinner = localPlacings?.[0]?.runner ?? null;
+  const preparedLines: Array<{
+    betAmount: number;
+    lineType: RaceBetLineType;
+    lockedOdds: number;
+    selectedRunner: (typeof hkjcRaceCard.raceCard.runners)[number];
+    placeRunner?: (typeof hkjcRaceCard.raceCard.runners)[number];
+  }> = [];
+
+  for (const item of parsed.data.basketItems) {
+    const selectedRunner = hkjcRaceCard.raceCard.runners.find((runner) => runner.horseNo === item.selectedHorseNo);
+    if (!selectedRunner) {
+      return { message: await localizedMessage("Selected horse is no longer available in the current HKJC racecard.") };
+    }
+
+    if (item.betType === "WIN_PLACE_COMBO") {
+      const placeRunner = hkjcRaceCard.raceCard.runners.find((runner) => runner.horseNo === item.selectedPlaceHorseNo);
+      if (!placeRunner || placeRunner.horseNo === selectedRunner.horseNo) {
+        return { message: await localizedMessage("Choose two different horses.") };
+      }
+
+      const winOddsValidation = validateLockedWinOddsQuote({
+        quotedWinOdds: item.quotedWinOdds,
+        currentWinOdds: selectedRunner.winOdds,
+        oddsAvailable: selectedRunner.oddsAvailable,
+      });
+      const placeOddsValidation = validateLockedOddsQuote({
+        quotedOdds: item.quotedPlaceOdds,
+        currentOdds: placeRunner.placeOdds,
+        oddsAvailable: placeRunner.placeOddsAvailable && hkjcRaceCard.raceCard.runners.length >= 4,
+      });
+
+      if (
+        (!winOddsValidation.ok && winOddsValidation.reason === "unavailable") ||
+        (!placeOddsValidation.ok && placeOddsValidation.reason === "unavailable")
+      ) {
+        return { message: await localizedMessage("Odds are unavailable. Try again shortly.") };
+      }
+
+      if (!winOddsValidation.ok || !placeOddsValidation.ok) {
+        return { message: await localizedMessage("Odds changed. Please confirm again.") };
+      }
+
+      preparedLines.push({
+        betAmount: item.unitBetAmount,
+        lineType: "WIN",
+        lockedOdds: winOddsValidation.lockedWinOdds * placeOddsValidation.lockedWinOdds,
+        selectedRunner,
+        placeRunner,
+      });
+      continue;
+    }
+
+    for (const lineType of getBetLineTypes(item.betType)) {
+      const oddsValidation =
+        lineType === "WIN"
+          ? validateLockedWinOddsQuote({
+              quotedWinOdds: item.quotedWinOdds,
+              currentWinOdds: selectedRunner.winOdds,
+              oddsAvailable: selectedRunner.oddsAvailable,
+            })
+          : validateLockedOddsQuote({
+              quotedOdds: item.quotedPlaceOdds,
+              currentOdds: selectedRunner.placeOdds,
+              oddsAvailable: selectedRunner.placeOddsAvailable && hkjcRaceCard.raceCard.runners.length >= 4,
+            });
+
+      if (!oddsValidation.ok && oddsValidation.reason === "unavailable") {
+        return { message: await localizedMessage("Odds are unavailable. Try again shortly.") };
+      }
+
+      if (!oddsValidation.ok) {
+        return { message: await localizedMessage("Odds changed. Please confirm again.") };
+      }
+
+      preparedLines.push({
+        betAmount: item.unitBetAmount,
+        lineType,
+        lockedOdds: oddsValidation.lockedWinOdds,
+        selectedRunner,
+      });
+    }
+  }
+
+  const totalBetAmount = preparedLines.reduce((total, line) => total + line.betAmount, 0);
+  const raceIds: number[] = [];
+
+  try {
+    const createdIds = await prisma.$transaction(async (tx) => {
       const player = await tx.user.findUnique({ where: { id: user.id } });
       if (!player || player.status !== "approved") {
         throw new Error(await localizedMessage("Approved account required."));
@@ -561,10 +844,10 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
         where: {
           id: player.id,
           status: "approved",
-          coinBalance: { gte: parsed.data.betAmount },
+          coinBalance: { gte: totalBetAmount },
         },
         data: {
-          coinBalance: { decrement: parsed.data.betAmount },
+          coinBalance: { decrement: totalBetAmount },
         },
       });
 
@@ -573,86 +856,115 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
       }
 
       const balanceBefore = player.coinBalance;
-      const balanceAfterBet = balanceBefore - parsed.data.betAmount;
+      let betBalanceCursor = balanceBefore;
+      let payoutBalanceCursor = balanceBefore - totalBetAmount;
+      const ids: number[] = [];
 
-      const race = await tx.raceResult.create({
-        data: {
-          userId: player.id,
-          selectedHorse: selectedRunner.name,
-          selectedHorseNo: selectedRunner.horseNo,
-          winningHorse: localOutcome?.winningHorse ?? "",
-          winningHorseNo: localWinningRunner?.horseNo,
-          betAmount: parsed.data.betAmount,
-          multiplierUsed: oddsValidation.lockedWinOdds,
-          payout: localOutcome?.payout ?? 0,
-          result: localOutcome ? (localOutcome.isWin ? "WIN" : "LOSS") : "PENDING",
-          hkjcRaceDate: hkjcRaceCard.raceCard.raceDate,
-          hkjcRacecourseCode: hkjcRaceCard.raceCard.racecourseCode,
-          hkjcRacecourseName: hkjcRaceCard.raceCard.racecourse,
-          hkjcRaceNo: hkjcRaceCard.raceCard.raceNo,
-          hkjcRaceName: hkjcRaceCard.raceCard.raceName,
-          hkjcRaceStartTime: hkjcRaceCard.raceCard.startTime,
-          settledAt: localOutcome ? new Date() : null,
-        },
-      });
+      for (const line of preparedLines) {
+        const localSelectedPlace = localPlacings?.find(
+          (placing) => placing.runner.horseNo === line.selectedRunner.horseNo,
+        );
+        const localComboPlace = line.placeRunner
+          ? localPlacings?.find((placing) => placing.runner.horseNo === line.placeRunner?.horseNo)
+          : null;
+        const localLineWin =
+          line.placeRunner
+            ? localWinner?.horseNo === line.selectedRunner.horseNo &&
+              isPlaceWinningPosition(localComboPlace?.place, hkjcRaceCard.raceCard.runners.length)
+            : line.lineType === "WIN"
+            ? localWinner?.horseNo === line.selectedRunner.horseNo
+            : isPlaceWinningPosition(localSelectedPlace?.place, hkjcRaceCard.raceCard.runners.length);
+        const localPayout = localPlacings && localLineWin ? Math.floor(line.betAmount * line.lockedOdds) : 0;
 
-      await tx.coinTransaction.create({
-        data: {
-          userId: player.id,
-          type: "BET_PLACED",
-          amount: -parsed.data.betAmount,
-          balanceBefore,
-          balanceAfter: balanceAfterBet,
-          relatedRaceId: race.id,
-        },
-      });
+        const race = await tx.raceResult.create({
+          data: {
+            userId: player.id,
+            selectedHorse: line.placeRunner
+              ? `${line.selectedRunner.name} Win + ${line.placeRunner.name} Place`
+              : line.selectedRunner.name,
+            selectedHorseNo: line.placeRunner
+              ? `${line.selectedRunner.horseNo}|${line.placeRunner.horseNo}`
+              : line.selectedRunner.horseNo,
+            selectedFinishPlace: line.placeRunner ? localComboPlace?.place : localSelectedPlace?.place,
+            winningHorse: localWinner?.name ?? "",
+            winningHorseNo: localWinner?.horseNo,
+            betType: line.placeRunner ? "WIN_PLACE_COMBO" : line.lineType,
+            betAmount: line.betAmount,
+            multiplierUsed: line.lockedOdds,
+            payout: localPayout,
+            result: localPlacings ? (localLineWin ? "WIN" : "LOSS") : "PENDING",
+            hkjcRaceDate: hkjcRaceCard.raceCard.raceDate,
+            hkjcRacecourseCode: hkjcRaceCard.raceCard.racecourseCode,
+            hkjcRacecourseName: hkjcRaceCard.raceCard.racecourse,
+            hkjcRaceNo: hkjcRaceCard.raceCard.raceNo,
+            hkjcRaceName: hkjcRaceCard.raceCard.raceName,
+            hkjcRaceStartTime: hkjcRaceCard.raceCard.startTime,
+            settledAt: localPlacings ? new Date() : null,
+          },
+        });
+        ids.push(race.id);
 
-      if (localOutcome) {
-        if (localOutcome.isWin) {
-          await tx.user.update({
-            where: { id: player.id },
-            data: { coinBalance: { increment: localOutcome.payout } },
-          });
-          await tx.coinTransaction.create({
-            data: {
-              userId: player.id,
-              type: "RACE_WIN",
-              amount: localOutcome.payout,
-              balanceBefore: balanceAfterBet,
-              balanceAfter: balanceAfterBet + localOutcome.payout,
-              relatedRaceId: race.id,
-            },
-          });
-        } else {
-          await tx.coinTransaction.create({
-            data: {
-              userId: player.id,
-              type: "RACE_LOSS",
-              amount: 0,
-              balanceBefore: balanceAfterBet,
-              balanceAfter: balanceAfterBet,
-              relatedRaceId: race.id,
-            },
-          });
+        await tx.coinTransaction.create({
+          data: {
+            userId: player.id,
+            type: "BET_PLACED",
+            amount: -line.betAmount,
+            balanceBefore: betBalanceCursor,
+            balanceAfter: betBalanceCursor - line.betAmount,
+            relatedRaceId: race.id,
+          },
+        });
+        betBalanceCursor -= line.betAmount;
+
+        if (localPlacings) {
+          if (localPayout > 0) {
+            await tx.coinTransaction.create({
+              data: {
+                userId: player.id,
+                type: "RACE_WIN",
+                amount: localPayout,
+                balanceBefore: payoutBalanceCursor,
+                balanceAfter: payoutBalanceCursor + localPayout,
+                relatedRaceId: race.id,
+              },
+            });
+            payoutBalanceCursor += localPayout;
+          } else {
+            await tx.coinTransaction.create({
+              data: {
+                userId: player.id,
+                type: "RACE_LOSS",
+                amount: 0,
+                balanceBefore: payoutBalanceCursor,
+                balanceAfter: payoutBalanceCursor,
+                relatedRaceId: race.id,
+              },
+            });
+          }
         }
       }
 
-      return race.id;
+      if (localPlacings && payoutBalanceCursor > balanceBefore - totalBetAmount) {
+        await tx.user.update({
+          where: { id: player.id },
+          data: { coinBalance: payoutBalanceCursor },
+        });
+      }
+
+      return ids;
     });
+    raceIds.push(...createdIds);
   } catch (error) {
     return { message: error instanceof Error ? error.message : await localizedMessage("Race failed.") };
   }
 
   revalidatePath("/race");
-  revalidatePath("/race");
   revalidatePath("/history");
   const language = await getCurrentLanguage();
-  if (localOutcome) {
+  if (localPlacings) {
     return {
       ok: true,
-      message: localOutcome.isWin
-        ? `Race #${raceId} settled. ${selectedRunner.name} won ${localOutcome.payout} coins.`
-        : `Race #${raceId} settled. Winner: ${localOutcome.winningHorse}.`,
+      message: `Basket settled. Races #${raceIds.join(", ")}. Winner: ${localWinner?.name ?? "-"}.`,
     };
   }
 
@@ -660,7 +972,7 @@ export async function runRaceAction(_: ActionState, formData: FormData): Promise
     ok: true,
     message:
       language === "mn"
-        ? `${selectedRunner.name} дээр бооцоо тавигдлаа. Уралдаан #${raceId} HKJC албан ёсны дүн хүлээж байна.`
-        : `Bet placed on ${selectedRunner.name}. Race #${raceId} is pending the official HKJC result.`,
+        ? `Бооцооны сагс илгээгдлээ. Уралдаан #${raceIds.join(", ")} HKJC албан ёсны дүн хүлээж байна.`
+        : `Basket submitted. Race #${raceIds.join(", ")} is pending the official HKJC result.`,
   };
 }

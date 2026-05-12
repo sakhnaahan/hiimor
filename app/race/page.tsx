@@ -79,7 +79,7 @@ export default async function RacePage({
                     )}&raceNo=${race.raceNo}`}
                     key={race.raceNo}
                   >
-                    {t.race} {race.raceNo}
+                    {race.raceNo}
                   </Link>
                 ))}
               </div>

@@ -40,6 +40,7 @@ export default async function AdminBetsPage() {
                 <th>{t.user}</th>
                 <th>{t.race}</th>
                 <th>{t.picked}</th>
+                <th>Bet Type</th>
                 <th>{t.winner}</th>
                 <th>{t.bet}</th>
                 <th>{t.multiplier}</th>
@@ -62,6 +63,10 @@ export default async function AdminBetsPage() {
                   <td>
                     <strong>{bet.selectedHorse}</strong>
                     <span className="runner-subtext">{t.no} {bet.selectedHorseNo ?? "-"}</span>
+                  </td>
+                  <td>
+                    <strong>{bet.betType}</strong>
+                    <span className="runner-subtext">Finish {bet.selectedFinishPlace ?? "-"}</span>
                   </td>
                   <td>
                     <strong>{bet.winningHorse || t.waitingResult}</strong>

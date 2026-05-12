@@ -59,8 +59,10 @@ model RaceResult {
   userId              Int               @map("user_id")
   selectedHorse       String            @map("selected_horse")
   selectedHorseNo     String?           @map("selected_horse_no")
+  selectedFinishPlace String?           @map("selected_finish_place")
   winningHorse        String            @map("winning_horse")
   winningHorseNo      String?           @map("winning_horse_no")
+  betType             String            @default("WIN") @map("bet_type")
   betAmount           Int               @map("bet_amount")
   multiplierUsed      Float             @map("multiplier_used")
   payout              Int

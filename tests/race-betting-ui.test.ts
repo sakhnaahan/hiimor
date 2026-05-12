@@ -4,11 +4,19 @@ import type { HkjcRunner } from "@/lib/hkjc-racecard";
 import {
   calculatePotentialPayout,
   calculatePotentialPayoutForRunner,
+  calculateWinPlaceComboPayout,
   canSubmitStake,
   findSelectedRunner,
+  getBasketTotals,
+  getBetLineCount,
+  getBetLineTypes,
+  getPlaceDividendCount,
   getQuickStakeValue,
+  getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
+  isPlaceWinningPosition,
   parseStakeInput,
+  validateLockedOddsQuote,
   validateLockedWinOddsQuote,
 } from "@/lib/race-betting-ui";
 
@@ -50,6 +58,39 @@ test("submit stake requires positive amount within balance", () => {
   assert.equal(canSubmitStake("50000", 100_000), true);
   assert.equal(canSubmitStake("100001", 100_000), false);
   assert.equal(canSubmitStake("", 100_000), false);
+  assert.equal(canSubmitStake("50000", 100_000, "WIN_PLACE"), true);
+  assert.equal(canSubmitStake("50001", 100_000, "WIN_PLACE"), false);
+});
+
+test("win/place bet type expands to the correct bet lines", () => {
+  assert.deepEqual(getBetLineTypes("WIN"), ["WIN"]);
+  assert.deepEqual(getBetLineTypes("PLACE"), ["PLACE"]);
+  assert.deepEqual(getBetLineTypes("WIN_PLACE"), ["WIN", "PLACE"]);
+  assert.equal(getBetLineCount("WIN"), 1);
+  assert.equal(getBetLineCount("PLACE"), 1);
+  assert.equal(getBetLineCount("WIN_PLACE"), 2);
+});
+
+test("basket totals count expanded lines and invalid stakes", () => {
+  assert.deepEqual(
+    getBasketTotals([
+      { betType: "WIN", unitBetAmount: "10" },
+      { betType: "PLACE", unitBetAmount: "20" },
+      { betType: "WIN_PLACE", unitBetAmount: "30" },
+    ]),
+    {
+      itemCount: 3,
+      lineCount: 4,
+      totalStake: 90,
+      invalidStakeCount: 0,
+    },
+  );
+  assert.deepEqual(getBasketTotals([{ betType: "WIN", unitBetAmount: "" }]), {
+    itemCount: 1,
+    lineCount: 1,
+    totalStake: 0,
+    invalidStakeCount: 1,
+  });
 });
 
 test("potential payout uses app multiplier and floors whole coins", () => {
@@ -64,11 +105,24 @@ test("potential payout can use locked HKJC win odds", () => {
     ...runner("7", "ODDS HORSE"),
     winOdds: "4.8",
     oddsAvailable: true,
+    placeOdds: "1.8",
+    placeOddsAvailable: true,
   };
 
   assert.equal(getRunnerLockedWinOdds(oddsRunner), 4.8);
+  assert.equal(getRunnerLockedPlaceOdds(oddsRunner), 1.8);
   assert.equal(calculatePotentialPayoutForRunner("100", oddsRunner), 480);
+  assert.equal(calculatePotentialPayoutForRunner("100", oddsRunner, "PLACE"), 180);
+  assert.equal(calculatePotentialPayoutForRunner("100", oddsRunner, "WIN_PLACE"), 660);
   assert.equal(calculatePotentialPayoutForRunner("100", { ...oddsRunner, oddsAvailable: false }), 0);
+  assert.equal(
+    calculateWinPlaceComboPayout(
+      "100",
+      oddsRunner,
+      { ...runner("8", "PLACE HORSE"), placeOdds: "2.2", placeOddsAvailable: true },
+    ),
+    1056,
+  );
 });
 
 test("locked odds validation rejects changed or unavailable odds", () => {
@@ -88,6 +142,21 @@ test("locked odds validation rejects changed or unavailable odds", () => {
     validateLockedWinOddsQuote({ quotedWinOdds: "4.8", currentWinOdds: "4.8", oddsAvailable: false }),
     { ok: false, reason: "unavailable" },
   );
+  assert.deepEqual(
+    validateLockedOddsQuote({ quotedOdds: "1.8", currentOdds: "1.80", oddsAvailable: true }),
+    { ok: true, lockedWinOdds: 1.8 },
+  );
+});
+
+test("place dividend qualification follows local HKJC runner-count rules", () => {
+  assert.equal(getPlaceDividendCount(3), 0);
+  assert.equal(getPlaceDividendCount(4), 2);
+  assert.equal(getPlaceDividendCount(7), 2);
+  assert.equal(getPlaceDividendCount(8), 3);
+  assert.equal(isPlaceWinningPosition("2", 4), true);
+  assert.equal(isPlaceWinningPosition("3", 4), false);
+  assert.equal(isPlaceWinningPosition("3", 8), true);
+  assert.equal(isPlaceWinningPosition("4", 8), false);
 });
 
 test("selected runner lookup falls back to first runner", () => {

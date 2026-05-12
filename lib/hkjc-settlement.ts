@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getHkjcRaceResult } from "@/lib/hkjc-results";
+import { isPlaceWinningPosition } from "@/lib/race-betting-ui";
 
 type SettlementOptions = {
   userId?: number;
@@ -9,6 +10,7 @@ type PendingRace = {
   id: number;
   userId: number;
   selectedHorseNo: string | null;
+  betType: string;
   betAmount: number;
   multiplierUsed: number;
   hkjcRaceDate: string | null;
@@ -36,6 +38,11 @@ function canCheckOfficialResult(race: PendingRace) {
   return Number.isFinite(raceTime.getTime()) && Date.now() >= raceTime.getTime();
 }
 
+function parseComboHorseNos(selectedHorseNo: string | null) {
+  const [winHorseNo, placeHorseNo] = String(selectedHorseNo ?? "").split("|");
+  return winHorseNo && placeHorseNo && winHorseNo !== placeHorseNo ? { winHorseNo, placeHorseNo } : null;
+}
+
 export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
   const pendingRaces = await prisma.raceResult.findMany({
     where: {
@@ -46,6 +53,7 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
       id: true,
       userId: true,
       selectedHorseNo: true,
+      betType: true,
       betAmount: true,
       multiplierUsed: true,
       hkjcRaceDate: true,
@@ -82,7 +90,17 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
       continue;
     }
 
-    const isWin = officialResult.winner.horseNo === race.selectedHorseNo;
+    const comboHorseNos = race.betType === "WIN_PLACE_COMBO" ? parseComboHorseNos(race.selectedHorseNo) : null;
+    const selectedResult = officialResult.runners.find((runner) =>
+      comboHorseNos ? runner.horseNo === comboHorseNos.placeHorseNo : runner.horseNo === race.selectedHorseNo,
+    );
+    const betType = race.betType === "PLACE" ? "PLACE" : "WIN";
+    const isWin = comboHorseNos
+      ? officialResult.winner.horseNo === comboHorseNos.winHorseNo &&
+        isPlaceWinningPosition(selectedResult?.place, officialResult.runners.length)
+      : betType === "PLACE"
+        ? isPlaceWinningPosition(selectedResult?.place, officialResult.runners.length)
+        : officialResult.winner.horseNo === race.selectedHorseNo;
     const payout = isWin ? Math.floor(race.betAmount * race.multiplierUsed) : 0;
     const finalResult = isWin ? "WIN" : "LOSS";
 
@@ -100,6 +118,7 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
         data: {
           winningHorse: officialResult.winner.horseName,
           winningHorseNo: officialResult.winner.horseNo,
+          selectedFinishPlace: selectedResult?.place ?? null,
           payout,
           result: finalResult,
           settledAt: new Date(),

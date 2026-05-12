@@ -8,16 +8,18 @@ type HkjcOddsNode = {
   hotFavourite: boolean;
 };
 
+type HkjcOddsPool = {
+  status?: string;
+  sellStatus?: string;
+  oddsType: string;
+  lastUpdateTime?: string;
+  oddsNodes?: HkjcOddsNode[];
+};
+
 type HkjcOddsResponse = {
   data?: {
     raceMeetings?: Array<{
-      pmPools?: Array<{
-        status?: string;
-        sellStatus?: string;
-        oddsType: string;
-        lastUpdateTime?: string;
-        oddsNodes?: HkjcOddsNode[];
-      }>;
+      pmPools?: HkjcOddsPool[];
     }>;
   };
 };
@@ -32,7 +34,15 @@ export type HkjcWinOdds = {
   lastUpdateTime: string;
 };
 
-const WIN_ODDS_QUERY = `
+export type HkjcRunnerOdds = HkjcWinOdds & {
+  placeOdds?: string;
+  placeMarketChance?: number;
+  placePoolStatus?: string;
+  placeSellStatus?: string;
+  placeLastUpdateTime?: string;
+};
+
+const ODDS_QUERY = `
       query racing($date: String, $venueCode: String, $oddsTypes: [OddsType], $raceNo: Int) {
           raceMeetings(date: $date, venueCode: $venueCode)
           {
@@ -85,7 +95,7 @@ export function calculateMarketChance(winOdds: string) {
   return Math.round((100 / odds) * 10) / 10;
 }
 
-export function parseWinOdds(value: string | undefined | null) {
+export function parseOdds(value: string | undefined | null) {
   const odds = Number.parseFloat(String(value ?? "").trim());
   if (!Number.isFinite(odds) || odds <= 0) {
     return null;
@@ -94,13 +104,74 @@ export function parseWinOdds(value: string | undefined | null) {
   return Math.round(odds * 100) / 100;
 }
 
-export function isHkjcWinPoolOpen(status?: string, sellStatus?: string) {
+export function parseWinOdds(value: string | undefined | null) {
+  return parseOdds(value);
+}
+
+export function isHkjcPoolOpen(status?: string, sellStatus?: string) {
   const normalizedStatus = String(status ?? "").toUpperCase();
   const normalizedSellStatus = String(sellStatus ?? "").toUpperCase();
   return normalizedStatus === "START_SELL" && normalizedSellStatus === "START_SELL";
 }
 
-export async function getHkjcWinOdds({
+export function isHkjcWinPoolOpen(status?: string, sellStatus?: string) {
+  return isHkjcPoolOpen(status, sellStatus);
+}
+
+function mapWinPool(winPool: HkjcOddsPool) {
+  return (winPool.oddsNodes ?? [])
+    .map((node): HkjcWinOdds | null => {
+      const marketChance = calculateMarketChance(node.oddsValue);
+      if (marketChance === null) {
+        return null;
+      }
+
+      return {
+        horseNo: normalizeHorseNo(node.combString),
+        winOdds: node.oddsValue,
+        marketChance,
+        hotFavourite: node.hotFavourite,
+        poolStatus: winPool.status ?? "",
+        sellStatus: winPool.sellStatus ?? "",
+        lastUpdateTime: winPool.lastUpdateTime ?? "",
+      };
+    })
+    .filter((odds): odds is HkjcWinOdds => odds !== null);
+}
+
+export function parseHkjcRunnerOddsResponse(json: HkjcOddsResponse) {
+  const pools = json.data?.raceMeetings?.[0]?.pmPools ?? [];
+  const winPool = pools.find((pool) => pool.oddsType === "WIN");
+  if (!winPool?.oddsNodes) {
+    return [];
+  }
+
+  const oddsByHorseNo = new Map<string, HkjcRunnerOdds>(mapWinPool(winPool).map((entry) => [entry.horseNo, entry]));
+  const placePool = pools.find((pool) => pool.oddsType === "PLA");
+  for (const node of placePool?.oddsNodes ?? []) {
+    const placeMarketChance = calculateMarketChance(node.oddsValue);
+    if (placeMarketChance === null) {
+      continue;
+    }
+
+    const horseNo = normalizeHorseNo(node.combString);
+    const existing = oddsByHorseNo.get(horseNo);
+    if (existing) {
+      oddsByHorseNo.set(horseNo, {
+        ...existing,
+        placeOdds: node.oddsValue,
+        placeMarketChance,
+        placePoolStatus: placePool?.status ?? "",
+        placeSellStatus: placePool?.sellStatus ?? "",
+        placeLastUpdateTime: placePool?.lastUpdateTime ?? "",
+      });
+    }
+  }
+
+  return [...oddsByHorseNo.values()];
+}
+
+export async function getHkjcRunnerOdds({
   raceDate,
   racecourseCode,
   raceNo,
@@ -119,11 +190,11 @@ export async function getHkjcWinOdds({
     },
     signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
     body: JSON.stringify({
-      query: WIN_ODDS_QUERY,
+      query: ODDS_QUERY,
       variables: {
         date: raceDate,
         venueCode: racecourseCode,
-        oddsTypes: ["WIN"],
+        oddsTypes: ["WIN", "PLA"],
         raceNo,
       },
     }),
@@ -135,27 +206,13 @@ export async function getHkjcWinOdds({
   }
 
   const json = (await response.json()) as HkjcOddsResponse;
-  const winPool = json.data?.raceMeetings?.[0]?.pmPools?.find((pool) => pool.oddsType === "WIN");
-  if (!winPool?.oddsNodes) {
-    return [];
-  }
+  return parseHkjcRunnerOddsResponse(json);
+}
 
-  return winPool.oddsNodes
-    .map((node): HkjcWinOdds | null => {
-      const marketChance = calculateMarketChance(node.oddsValue);
-      if (marketChance === null) {
-        return null;
-      }
-
-      return {
-        horseNo: normalizeHorseNo(node.combString),
-        winOdds: node.oddsValue,
-        marketChance,
-        hotFavourite: node.hotFavourite,
-        poolStatus: winPool.status ?? "",
-        sellStatus: winPool.sellStatus ?? "",
-        lastUpdateTime: winPool.lastUpdateTime ?? "",
-      };
-    })
-    .filter((odds): odds is HkjcWinOdds => odds !== null);
+export async function getHkjcWinOdds(request: {
+  raceDate: string;
+  racecourseCode: string;
+  raceNo: number;
+}) {
+  return getHkjcRunnerOdds(request);
 }

@@ -25,30 +25,53 @@ export function RaceSummaryHeader({
   ]
     .filter(Boolean)
     .join(" / ");
+  const mobileDetailLines = [
+    [raceCard.meetingDate, raceCard.startTime].filter(Boolean).join(", "),
+    [raceCard.raceClass, raceCard.distance, raceCard.surface].filter(Boolean).join(", "),
+    [raceCard.course ? `"${raceCard.course}" COURSE` : null, raceCard.going].filter(Boolean).join(", "),
+  ].filter(Boolean);
 
   return (
-    <div className="race-summary-header">
-      <div className="race-summary-main">
-        <div className="race-kicker">
-          <span>{t.race} {raceCard.raceNo}</span>
-          <span>{raceCard.meetingDate}</span>
+    <div className="race-summary-wrap">
+      <div className="race-app-hero">
+        <div>
+          <span className="race-app-mark">{t.brand}</span>
+          <strong>{t.race} {raceCard.raceNo}</strong>
         </div>
-        <h1 className="race-title">{raceCard.raceName}</h1>
-        <p className="muted race-summary-line">{compactDetails}</p>
-        {raceDetails ? <p className="muted race-summary-desktop-line">{raceDetails}</p> : null}
-        <a className="button secondary race-live-link" href={liveStreamUrl} rel="noopener noreferrer" target="_blank">
+        <div className="race-app-actions" aria-label="Race account shortcuts">
+          <span>{pendingRaceCount}</span>
+          <span>$</span>
+          <span>@</span>
+        </div>
+      </div>
+
+      <div className="race-notice-strip">
+        <span>!</span>
+        <strong>{raceCard.oddsAvailable ? t.liveOdds : t.racecardUnavailable}</strong>
+        <a href={liveStreamUrl} rel="noopener noreferrer" target="_blank">
           {t.watchLive}
         </a>
       </div>
-      <RaceCourseMap raceCard={raceCard} />
-      <div className="race-status-strip">
-        <div>
-          <span className="badge-label">{t.waitingResult}</span>
-          <strong>{pendingRaceCount}</strong>
+
+      <div className="race-summary-header">
+        <div className="race-summary-main">
+          <div className="race-kicker">
+            <span>{t.race} {raceCard.raceNo}</span>
+            <span>{raceCard.meetingDate}</span>
+          </div>
+          <h1 className="race-title">{raceCard.raceName}</h1>
+          <p className="muted race-summary-line">{compactDetails}</p>
+          {raceDetails ? <p className="muted race-summary-desktop-line">{raceDetails}</p> : null}
+          <p className="race-mobile-details">
+            {mobileDetailLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </p>
         </div>
-        <div>
-          <span className="badge-label">{t.odds}</span>
-          <strong>{raceCard.oddsAvailable ? t.liveOdds : "-"}</strong>
+        <RaceCourseMap raceCard={raceCard} />
+        <div className="race-mobile-wager">
+          <strong>Win/Place</strong>
+          <span aria-hidden="true">v</span>
         </div>
       </div>
     </div>

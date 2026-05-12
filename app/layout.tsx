@@ -11,8 +11,8 @@ import { getCurrentLanguage } from "@/lib/language";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Морин уралдаан",
-  description: "Хувийн морин уралдааны бооцооны апп",
+  title: "Хийморь",
+  description: "...",
 };
 
 export default async function RootLayout({
