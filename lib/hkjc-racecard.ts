@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import { calculateMarketChance, getHkjcRunnerOdds, isHkjcPoolOpen } from "@/lib/hkjc-odds";
+import { calculateMarketChance, getHkjcRunnerOdds, parseOdds } from "@/lib/hkjc-odds";
 
 const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racecard";
 const HKJC_FIXTURE_URL = "https://racing.hkjc.com/en-us/local/information/fixture";
@@ -1040,12 +1040,14 @@ async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
 
   raceCard.runners = raceCard.runners.map((runner) => {
     const runnerOdds = oddsByHorseNo.get(runner.horseNo);
+    const hasWinOdds = parseOdds(runnerOdds?.winOdds) !== null;
+    const hasPlaceOdds = parseOdds(runnerOdds?.placeOdds) !== null;
     return runnerOdds
       ? {
           ...runner,
           ...runnerOdds,
-          oddsAvailable: isHkjcPoolOpen(runnerOdds.poolStatus, runnerOdds.sellStatus),
-          placeOddsAvailable: isHkjcPoolOpen(runnerOdds.placePoolStatus, runnerOdds.placeSellStatus),
+          oddsAvailable: hasWinOdds,
+          placeOddsAvailable: hasPlaceOdds,
           oddsLastUpdateTime: runnerOdds.lastUpdateTime || runnerOdds.placeLastUpdateTime,
         }
       : { ...runner, oddsAvailable: false, placeOddsAvailable: false };
