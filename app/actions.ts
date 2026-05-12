@@ -82,7 +82,7 @@ export async function signupAction(_: ActionState, formData: FormData): Promise<
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       username,
       passwordHash,
@@ -92,7 +92,8 @@ export async function signupAction(_: ActionState, formData: FormData): Promise<
     },
   });
 
-  return { ok: true, message: await localizedMessage("Account created. You can log in now.") };
+  await createSession(user.id);
+  redirect("/race");
 }
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
