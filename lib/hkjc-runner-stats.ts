@@ -38,7 +38,10 @@ function hasGoodRecentForm(last6Runs: string) {
     .some((place) => ["1", "2", "3"].includes(place));
 }
 
-export function getRunnerStatSignals(raceCard: HkjcRaceCard, runner: HkjcRunner): RunnerStatSignal[] {
+export function getRunnerStatSignals(
+  raceCard: HkjcRaceCard,
+  runner: HkjcRunner,
+): RunnerStatSignal[] {
   const signals: RunnerStatSignal[] = [];
   const distanceMeters = parseDistanceMeters(raceCard.distance);
   const draw = parseNumber(runner.draw);
@@ -48,7 +51,13 @@ export function getRunnerStatSignals(raceCard: HkjcRaceCard, runner: HkjcRunner)
 
   if (isShortRace && draw !== null && draw >= 1 && draw <= 3) {
     signals.push({ label: "Inside draw", tone: "positive" });
-  } else if (isShortRace && draw !== null && maxDraw !== null && maxDraw >= 8 && draw >= maxDraw - 2) {
+  } else if (
+    isShortRace &&
+    draw !== null &&
+    maxDraw !== null &&
+    maxDraw >= 8 &&
+    draw >= maxDraw - 2
+  ) {
     signals.push({ label: "Wide draw", tone: "warning" });
   }
 
@@ -57,7 +66,12 @@ export function getRunnerStatSignals(raceCard: HkjcRaceCard, runner: HkjcRunner)
   const minWeight = weights.length > 0 ? Math.min(...weights) : null;
   const maxWeight = weights.length > 0 ? Math.max(...weights) : null;
 
-  if (weight !== null && minWeight !== null && maxWeight !== null && minWeight !== maxWeight) {
+  if (
+    weight !== null &&
+    minWeight !== null &&
+    maxWeight !== null &&
+    minWeight !== maxWeight
+  ) {
     if (weight === minWeight) {
       signals.push({ label: "Light weight", tone: "positive" });
     }

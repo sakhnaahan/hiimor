@@ -7,10 +7,9 @@ export default async function LoginPage() {
   const t = getTranslations(language);
 
   return (
-    <div className="grid grid-2 auth-shell">
-      <section className="hero panel auth-hero" />
-      <section className="panel auth-panel">
-        <span className="auth-kicker">{t.brand}</span>
+    <div className="auth-shell xl:flex sm:">
+      <section className="hero panel auth-hero w-full " />
+      <section className="panel auth-panel border  ">
         <h2 className="section-title">{t.login}</h2>
         <LoginForm language={language} />
       </section>

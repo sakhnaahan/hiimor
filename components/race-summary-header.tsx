@@ -27,8 +27,12 @@ export function RaceSummaryHeader({
     .join(" / ");
   const mobileDetailLines = [
     [raceCard.meetingDate, raceCard.startTime].filter(Boolean).join(", "),
-    [raceCard.raceClass, raceCard.distance, raceCard.surface].filter(Boolean).join(", "),
-    [raceCard.course ? `"${raceCard.course}" COURSE` : null, raceCard.going].filter(Boolean).join(", "),
+    [raceCard.raceClass, raceCard.distance, raceCard.surface]
+      .filter(Boolean)
+      .join(", "),
+    [raceCard.course ? `"${raceCard.course}" COURSE` : null, raceCard.going]
+      .filter(Boolean)
+      .join(", "),
   ].filter(Boolean);
 
   return (
@@ -36,7 +40,9 @@ export function RaceSummaryHeader({
       <div className="race-app-hero">
         <div>
           <span className="race-app-mark">{t.brand}</span>
-          <strong>{t.race} {raceCard.raceNo}</strong>
+          <strong>
+            {t.race} {raceCard.raceNo}
+          </strong>
         </div>
         <div className="race-app-actions" aria-label="Race account shortcuts">
           <span>{pendingRaceCount}</span>
@@ -47,7 +53,9 @@ export function RaceSummaryHeader({
 
       <div className="race-notice-strip">
         <span>!</span>
-        <strong>{raceCard.oddsAvailable ? t.liveOdds : t.racecardUnavailable}</strong>
+        <strong>
+          {raceCard.oddsAvailable ? t.liveOdds : t.racecardUnavailable}
+        </strong>
         <a href={liveStreamUrl} rel="noopener noreferrer" target="_blank">
           {t.watchLive}
         </a>
@@ -56,12 +64,16 @@ export function RaceSummaryHeader({
       <div className="race-summary-header">
         <div className="race-summary-main">
           <div className="race-kicker">
-            <span>{t.race} {raceCard.raceNo}</span>
+            <span>
+              {t.race} {raceCard.raceNo}
+            </span>
             <span>{raceCard.meetingDate}</span>
           </div>
           <h1 className="race-title">{raceCard.raceName}</h1>
           <p className="muted race-summary-line">{compactDetails}</p>
-          {raceDetails ? <p className="muted race-summary-desktop-line">{raceDetails}</p> : null}
+          {raceDetails ? (
+            <p className="muted race-summary-desktop-line">{raceDetails}</p>
+          ) : null}
           <p className="race-mobile-details">
             {mobileDetailLines.map((line) => (
               <span key={line}>{line}</span>
@@ -69,10 +81,10 @@ export function RaceSummaryHeader({
           </p>
         </div>
         <RaceCourseMap raceCard={raceCard} />
-        <div className="race-mobile-wager">
-          <strong>Win/Place</strong>
-          <span aria-hidden="true">v</span>
-        </div>
+        {/* <div className="race-mobile-wager">
+            <strong>Win/Place</strong>
+            <span aria-hidden="true">v</span>
+          </div> */}
       </div>
     </div>
   );

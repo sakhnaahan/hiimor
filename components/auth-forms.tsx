@@ -13,7 +13,13 @@ export function SignupForm({ language }: { language: Language }) {
     <ActionForm action={signupAction} language={language}>
       <div className="field">
         <label htmlFor="username">{t.username}</label>
-        <input className="input" id="username" name="username" autoComplete="username" required />
+        <input
+          className="input"
+          id="username"
+          name="username"
+          autoComplete="username"
+          required
+        />
       </div>
       <PasswordField
         id="password"
@@ -38,7 +44,13 @@ export function LoginForm({ language }: { language: Language }) {
     <ActionForm action={loginAction} language={language}>
       <div className="field">
         <label htmlFor="username">{t.username}</label>
-        <input className="input" id="username" name="username" autoComplete="username" required />
+        <input
+          className="input"
+          id="username"
+          name="username"
+          autoComplete="username"
+          required
+        />
       </div>
       <PasswordField
         id="password"

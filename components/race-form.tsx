@@ -19,6 +19,8 @@ import {
   type RaceBetType,
 } from "@/lib/race-betting-ui";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
+import { useRouter } from "next/navigation";
 
 const DEFAULT_UNIT_BET = "10";
 
@@ -35,7 +37,7 @@ type BasketItem = {
 };
 
 type SelectionMode = "single" | "combo";
-type BetSlipTab = "quick" | "basket";
+type BetSlipTab = "quick";
 type PendingBetSelection = BasketItem & {
   raceNo: number;
 };
@@ -66,13 +68,22 @@ function SilkPlaceholder({ horseNo }: { horseNo: string }) {
   const [primary, accent] = palette[index];
 
   return (
-    <span className="silk-placeholder" style={{ "--silk-primary": primary, "--silk-accent": accent } as CSSProperties}>
+    <span
+      className="silk-placeholder"
+      style={
+        { "--silk-primary": primary, "--silk-accent": accent } as CSSProperties
+      }
+    >
       <span />
     </span>
   );
 }
 
-function getBasketItemId(horseNo: string, betType: RaceBetType, placeHorseNo = "") {
+function getBasketItemId(
+  horseNo: string,
+  betType: RaceBetType,
+  placeHorseNo = "",
+) {
   return `${horseNo}:${betType}:${placeHorseNo}`;
 }
 
@@ -108,17 +119,26 @@ export function RaceForm({
   const t = getTranslations(language);
   const [expandedHorseNo, setExpandedHorseNo] = useState<string | null>(null);
   const [betSlipOpen, setBetSlipOpen] = useState(false);
-  const [betSlipTab, setBetSlipTab] = useState<BetSlipTab>("basket");
+  const [betSlipTab, setBetSlipTab] = useState<BetSlipTab>("quick");
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
-  const [pendingBet, setPendingBet] = useState<PendingBetSelection | null>(null);
+  const [pendingBet, setPendingBet] = useState<PendingBetSelection | null>(
+    null,
+  );
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("single");
   const [comboWinHorseNo, setComboWinHorseNo] = useState<string | null>(null);
-  const [comboPlaceHorseNo, setComboPlaceHorseNo] = useState<string | null>(null);
+  const [comboPlaceHorseNo, setComboPlaceHorseNo] = useState<string | null>(
+    null,
+  );
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
   const basketTotals = getBasketTotals(basketItems);
-  const quickBetItems = basketItems.filter((item) => item.betType !== "WIN_PLACE_COMBO");
-  const comboBetItems = basketItems.filter((item) => item.betType === "WIN_PLACE_COMBO");
-  const visibleBetSlipItems = betSlipTab === "basket" ? comboBetItems : quickBetItems;
+  const router = useRouter();
+  const quickBetItems = basketItems.filter(
+    (item) => item.betType !== "WIN_PLACE_COMBO",
+  );
+  const comboBetItems = basketItems.filter(
+    (item) => item.betType === "WIN_PLACE_COMBO",
+  );
+  const visibleBetSlipItems = quickBetItems;
   const basketPayload = useMemo(
     () =>
       JSON.stringify(
@@ -141,12 +161,21 @@ export function RaceForm({
         calculateWinPlaceComboPayout(
           item.unitBetAmount,
           runner,
-          item.placeHorseNo ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo) : null,
+          item.placeHorseNo
+            ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo)
+            : null,
         )
       );
     }
 
-    return total + calculatePotentialPayoutForRunner(item.unitBetAmount, runner, item.betType);
+    return (
+      total +
+      calculatePotentialPayoutForRunner(
+        item.unitBetAmount,
+        runner,
+        item.betType,
+      )
+    );
   }, 0);
   const canSubmitBasket =
     basketItems.length > 0 &&
@@ -159,12 +188,20 @@ export function RaceForm({
       }
 
       if (item.betType === "WIN_PLACE_COMBO") {
-        const placeRunner = item.placeHorseNo ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo) : null;
-        return runner.horseNo !== placeRunner?.horseNo && getRunnerLockedWinOdds(runner) !== null && getRunnerLockedPlaceOdds(placeRunner) !== null;
+        const placeRunner = item.placeHorseNo
+          ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo)
+          : null;
+        return (
+          runner.horseNo !== placeRunner?.horseNo &&
+          getRunnerLockedWinOdds(runner) !== null &&
+          getRunnerLockedPlaceOdds(placeRunner) !== null
+        );
       }
 
       return getBetLineTypes(item.betType).every((lineType) =>
-        lineType === "WIN" ? getRunnerLockedWinOdds(runner) !== null : getRunnerLockedPlaceOdds(runner) !== null,
+        lineType === "WIN"
+          ? getRunnerLockedWinOdds(runner) !== null
+          : getRunnerLockedPlaceOdds(runner) !== null,
       );
     });
 
@@ -175,9 +212,13 @@ export function RaceForm({
 
     function openBetSlip() {
       setBetSlipOpen(true);
-      setBetSlipTab("basket");
+      setBetSlipTab("quick");
       if (window.location.hash !== "#betslip") {
-        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#betslip`);
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}#betslip`,
+        );
       }
     }
 
@@ -192,9 +233,13 @@ export function RaceForm({
 
   function openBetSlipPanel() {
     setBetSlipOpen(true);
-    setBetSlipTab("basket");
+    setBetSlipTab("quick");
     if (window.location.hash !== "#betslip") {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#betslip`);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#betslip`,
+      );
       window.dispatchEvent(new Event("hashchange"));
     }
   }
@@ -202,7 +247,11 @@ export function RaceForm({
   function closeBetSlipPanel() {
     setBetSlipOpen(false);
     if (window.location.hash === "#betslip") {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
       window.dispatchEvent(new Event("hashchange"));
     }
   }
@@ -227,6 +276,7 @@ export function RaceForm({
       return [...items, item];
     });
     setPendingBet(null);
+    toggleBetSlip();
   }
 
   function addBasketItem(runner: HkjcRunner, betType: RaceBetType) {
@@ -254,7 +304,11 @@ export function RaceForm({
       return;
     }
 
-    const id = getBasketItemId(winRunner.horseNo, "WIN_PLACE_COMBO", placeRunner.horseNo);
+    const id = getBasketItemId(
+      winRunner.horseNo,
+      "WIN_PLACE_COMBO",
+      placeRunner.horseNo,
+    );
     if (basketItems.some((item) => item.id === id)) {
       setBasketItems((items) => items.filter((item) => item.id !== id));
       setPendingBet(null);
@@ -276,22 +330,28 @@ export function RaceForm({
   }
 
   function selectComboWin(runner: HkjcRunner) {
-    const nextPlaceHorseNo = comboPlaceHorseNo === runner.horseNo ? null : comboPlaceHorseNo;
+    const nextPlaceHorseNo =
+      comboPlaceHorseNo === runner.horseNo ? null : comboPlaceHorseNo;
     setComboWinHorseNo(runner.horseNo);
     setComboPlaceHorseNo(nextPlaceHorseNo);
 
-    const placeRunner = nextPlaceHorseNo ? getRunnerByHorseNo(raceCard.runners, nextPlaceHorseNo) : null;
+    const placeRunner = nextPlaceHorseNo
+      ? getRunnerByHorseNo(raceCard.runners, nextPlaceHorseNo)
+      : null;
     if (placeRunner) {
       addComboBasketItem(runner, placeRunner);
     }
   }
 
   function selectComboPlace(runner: HkjcRunner) {
-    const nextWinHorseNo = comboWinHorseNo === runner.horseNo ? null : comboWinHorseNo;
+    const nextWinHorseNo =
+      comboWinHorseNo === runner.horseNo ? null : comboWinHorseNo;
     setComboWinHorseNo(nextWinHorseNo);
     setComboPlaceHorseNo(runner.horseNo);
 
-    const winRunner = nextWinHorseNo ? getRunnerByHorseNo(raceCard.runners, nextWinHorseNo) : null;
+    const winRunner = nextWinHorseNo
+      ? getRunnerByHorseNo(raceCard.runners, nextWinHorseNo)
+      : null;
     if (winRunner) {
       addComboBasketItem(winRunner, runner);
     }
@@ -306,7 +366,9 @@ export function RaceForm({
   }
 
   function updateBasketStake(id: string, unitBetAmount: string) {
-    setBasketItems((items) => items.map((item) => (item.id === id ? { ...item, unitBetAmount } : item)));
+    setBasketItems((items) =>
+      items.map((item) => (item.id === id ? { ...item, unitBetAmount } : item)),
+    );
   }
 
   function confirmBasket(event: React.FormEvent<HTMLFormElement>) {
@@ -324,14 +386,25 @@ export function RaceForm({
     if (!confirmed) {
       event.preventDefault();
     }
+    setBasketItems([]);
+    router.push("/history");
   }
 
   return (
-    <ActionForm action={runRaceBasketAction} className="form race-form" language={language} onSubmit={confirmBasket}>
+    <ActionForm
+      action={runRaceBasketAction}
+      className="form race-form"
+      language={language}
+      onSubmit={confirmBasket}
+    >
       {({ pending, message }) => (
         <>
           <input name="raceDate" type="hidden" value={raceCard.raceDate} />
-          <input name="racecourseCode" type="hidden" value={raceCard.racecourseCode} />
+          <input
+            name="racecourseCode"
+            type="hidden"
+            value={raceCard.racecourseCode}
+          />
           <input name="raceNo" type="hidden" value={raceCard.raceNo} />
           <input name="basketItems" type="hidden" value={basketPayload} />
 
@@ -372,23 +445,45 @@ export function RaceForm({
               </div>
               {raceCard.runners.map((runner) => {
                 const expanded = expandedHorseNo === runner.horseNo;
-                const selected = [...basketItems, ...(pendingBet ? [pendingBet] : [])].some(
-                  (item) => item.horseNo === runner.horseNo || item.placeHorseNo === runner.horseNo,
+                const selected = [
+                  ...basketItems,
+                  ...(pendingBet ? [pendingBet] : []),
+                ].some(
+                  (item) =>
+                    item.horseNo === runner.horseNo ||
+                    item.placeHorseNo === runner.horseNo,
                 );
                 const winSelected =
                   pendingBet?.id === getBasketItemId(runner.horseNo, "WIN") ||
-                  basketItems.some((item) => item.id === getBasketItemId(runner.horseNo, "WIN"));
+                  basketItems.some(
+                    (item) =>
+                      item.id === getBasketItemId(runner.horseNo, "WIN"),
+                  );
                 const placeSelected =
                   pendingBet?.id === getBasketItemId(runner.horseNo, "PLACE") ||
-                  basketItems.some((item) => item.id === getBasketItemId(runner.horseNo, "PLACE"));
+                  basketItems.some(
+                    (item) =>
+                      item.id === getBasketItemId(runner.horseNo, "PLACE"),
+                  );
                 const winPlaceSelected =
-                  pendingBet?.id === getBasketItemId(runner.horseNo, "WIN_PLACE") ||
-                  basketItems.some((item) => item.id === getBasketItemId(runner.horseNo, "WIN_PLACE"));
+                  pendingBet?.id ===
+                    getBasketItemId(runner.horseNo, "WIN_PLACE") ||
+                  basketItems.some(
+                    (item) =>
+                      item.id === getBasketItemId(runner.horseNo, "WIN_PLACE"),
+                  );
                 const winDisabled = !runner.oddsAvailable || !runner.winOdds;
-                const placeDisabled = !placeAvailable || !runner.placeOddsAvailable || !runner.placeOdds;
+                const placeDisabled =
+                  !placeAvailable ||
+                  !runner.placeOddsAvailable ||
+                  !runner.placeOdds;
                 const winPlaceDisabled = winDisabled || placeDisabled;
-                const comboWinSelected = selectionMode === "combo" && comboWinHorseNo === runner.horseNo;
-                const comboPlaceSelected = selectionMode === "combo" && comboPlaceHorseNo === runner.horseNo;
+                const comboWinSelected =
+                  selectionMode === "combo" &&
+                  comboWinHorseNo === runner.horseNo;
+                const comboPlaceSelected =
+                  selectionMode === "combo" &&
+                  comboPlaceHorseNo === runner.horseNo;
                 const extraStats = [
                   { label: t.weight, value: runner.weight },
                   { label: t.gear, value: runner.gear },
@@ -404,7 +499,10 @@ export function RaceForm({
                 const statsId = `runner-stats-${runner.horseNo}`;
 
                 return (
-                  <article className={`runner-row ${selected ? "is-selected" : ""}`} key={`${runner.horseNo}-${runner.brandNo}`}>
+                  <article
+                    className={`runner-row ${selected ? "is-selected" : ""}`}
+                    key={`${runner.horseNo}-${runner.brandNo}`}
+                  >
                     <div className="runner-row-main">
                       <span className="runner-rail">
                         <span className="runner-flag" />
@@ -414,37 +512,83 @@ export function RaceForm({
                       <span className="runner-core">
                         <strong>{runner.name}</strong>
                         <span className="runner-people">
-                          <span><b>J</b> {runner.jockey || "-"}</span>
-                          <span><b>T</b> {runner.trainer || "-"}</span>
-                          <span><b>{t.draw}</b> {runner.draw || "-"}</span>
+                          <span>
+                            <b>J</b> {runner.jockey || "-"}
+                          </span>
+                          <span>
+                            <b>T</b> {runner.trainer || "-"}
+                          </span>
+                          <span>
+                            <b>{t.draw}</b> {runner.draw || "-"}
+                          </span>
                         </span>
-                        {runner.hotFavourite ? <span className="runner-hot">{t.hotFavourite}</span> : null}
+                        {runner.hotFavourite ? (
+                          <span className="runner-hot">{t.hotFavourite}</span>
+                        ) : null}
                       </span>
                       <span className="runner-odds-grid">
                         <button
-                          aria-pressed={selectionMode === "combo" ? comboWinSelected : winSelected}
-                          className={(selectionMode === "combo" ? comboWinSelected : winSelected) ? "active" : ""}
+                          aria-pressed={
+                            selectionMode === "combo"
+                              ? comboWinSelected
+                              : winSelected
+                          }
+                          className={
+                            (
+                              selectionMode === "combo"
+                                ? comboWinSelected
+                                : winSelected
+                            )
+                              ? "active"
+                              : ""
+                          }
                           disabled={winDisabled}
-                          onClick={() => (selectionMode === "combo" ? selectComboWin(runner) : addBasketItem(runner, "WIN"))}
+                          onClick={() =>
+                            selectionMode === "combo"
+                              ? selectComboWin(runner)
+                              : addBasketItem(runner, "WIN")
+                          }
                           type="button"
                         >
                           <b>W</b>
-                          {runner.oddsAvailable && runner.winOdds ? runner.winOdds : "---"}
+                          {runner.oddsAvailable && runner.winOdds
+                            ? runner.winOdds
+                            : "---"}
                         </button>
                         <button
-                          aria-pressed={selectionMode === "combo" ? comboPlaceSelected : placeSelected}
-                          className={(selectionMode === "combo" ? comboPlaceSelected : placeSelected) ? "active" : ""}
+                          aria-pressed={
+                            selectionMode === "combo"
+                              ? comboPlaceSelected
+                              : placeSelected
+                          }
+                          className={
+                            (
+                              selectionMode === "combo"
+                                ? comboPlaceSelected
+                                : placeSelected
+                            )
+                              ? "active"
+                              : ""
+                          }
                           disabled={placeDisabled}
-                          onClick={() => (selectionMode === "combo" ? selectComboPlace(runner) : addBasketItem(runner, "PLACE"))}
+                          onClick={() =>
+                            selectionMode === "combo"
+                              ? selectComboPlace(runner)
+                              : addBasketItem(runner, "PLACE")
+                          }
                           type="button"
                         >
                           <b>P</b>
-                          {runner.placeOddsAvailable && runner.placeOdds ? runner.placeOdds : "---"}
+                          {runner.placeOddsAvailable && runner.placeOdds
+                            ? runner.placeOdds
+                            : "---"}
                         </button>
                         <button
                           aria-pressed={winPlaceSelected}
                           className={winPlaceSelected ? "active" : ""}
-                          disabled={selectionMode === "combo" || winPlaceDisabled}
+                          disabled={
+                            selectionMode === "combo" || winPlaceDisabled
+                          }
                           onClick={() => addBasketItem(runner, "WIN_PLACE")}
                           type="button"
                         >
@@ -456,10 +600,12 @@ export function RaceForm({
                         aria-controls={statsId}
                         aria-expanded={expanded}
                         className="runner-expand"
-                        onClick={() => setExpandedHorseNo(expanded ? null : runner.horseNo)}
+                        onClick={() =>
+                          setExpandedHorseNo(expanded ? null : runner.horseNo)
+                        }
                         type="button"
                       >
-                        {expanded ? "^" : "v"}
+                        {expanded ? <FaChevronUp /> : <FaChevronDown />}
                       </button>
                       <span className="runner-select-dot" aria-hidden="true" />
                     </div>
@@ -474,7 +620,13 @@ export function RaceForm({
                         </div>
                         <div className="runner-secondary-facts">
                           {hasExtraStats ? (
-                            extraStats.map((stat) => <RunnerFact key={stat.label} label={stat.label} value={stat.value} />)
+                            extraStats.map((stat) => (
+                              <RunnerFact
+                                key={stat.label}
+                                label={stat.label}
+                                value={stat.value}
+                              />
+                            ))
                           ) : (
                             <span className="muted">{t.noExtraStats}</span>
                           )}
@@ -482,7 +634,10 @@ export function RaceForm({
                         {signals.length ? (
                           <div className="runner-signals">
                             {signals.map((signal) => (
-                              <span className={`runner-signal ${signal.tone}`} key={signal.label}>
+                              <span
+                                className={`runner-signal ${signal.tone}`}
+                                key={signal.label}
+                              >
                                 {signal.label}
                               </span>
                             ))}
@@ -501,17 +656,24 @@ export function RaceForm({
                 <div className="bet-confirm-main">
                   <div>
                     <span>
-                      {t.noOfBets}: <strong>{getBetLineCount(pendingBet.betType)}</strong>
+                      {t.noOfBets}:{" "}
+                      <strong>{getBetLineCount(pendingBet.betType)}</strong>
                     </span>
                     <strong>
-                      {t.race} {pendingBet.raceNo} <span>|</span> {getBetTypeLabel(pendingBet.betType)}
+                      {t.race} {pendingBet.raceNo} <span>|</span>{" "}
+                      {getBetTypeLabel(pendingBet.betType)}
                     </strong>
                     <p>
                       {pendingBet.horseNo}
-                      {pendingBet.placeHorseNo ? ` + ${pendingBet.placeHorseNo}` : ""}
+                      {pendingBet.placeHorseNo
+                        ? ` + ${pendingBet.placeHorseNo}`
+                        : ""}
                     </p>
                   </div>
-                  <button onClick={() => toggleBasketItem(pendingBet)} type="button">
+                  <button
+                    onClick={() => toggleBasketItem(pendingBet)}
+                    type="button"
+                  >
                     {t.addToBetSlip}
                   </button>
                 </div>
@@ -523,15 +685,26 @@ export function RaceForm({
               className={`bet-slip-backdrop ${betSlipOpen ? "is-visible" : ""}`}
               onClick={closeBetSlipPanel}
             />
-            <aside className={`bet-slip basket-slip ${betSlipOpen ? "is-expanded" : "is-collapsed"}`} id="betslip">
+            <aside
+              className={`bet-slip basket-slip ${betSlipOpen ? "is-expanded" : "is-collapsed"}`}
+              id="betslip"
+            >
               <div className="bet-slip-panel-top">
                 <strong>{t.selectedBets}</strong>
-                <button className="bet-slip-panel-close" onClick={closeBetSlipPanel} type="button">
+                <button
+                  className="bet-slip-panel-close"
+                  onClick={closeBetSlipPanel}
+                  type="button"
+                >
                   {t.hideBetslip}
                 </button>
               </div>
 
-              <div className="bet-slip-tabs" role="tablist" aria-label={t.selectedBets}>
+              <div
+                className="bet-slip-tabs"
+                role="tablist"
+                aria-label={t.selectedBets}
+              >
                 <button
                   aria-selected={betSlipTab === "quick"}
                   className={betSlipTab === "quick" ? "active" : ""}
@@ -541,7 +714,7 @@ export function RaceForm({
                 >
                   {t.openBetslip} <span>{quickBetItems.length}</span>
                 </button>
-                <button
+                {/* <button
                   aria-selected={betSlipTab === "basket"}
                   className={betSlipTab === "basket" ? "active" : ""}
                   onClick={() => setBetSlipTab("basket")}
@@ -549,7 +722,7 @@ export function RaceForm({
                   type="button"
                 >
                   {t.basket} <span>{comboBetItems.length}</span>
-                </button>
+                </button> */}
               </div>
 
               <div className="bet-slip-mobile-summary">
@@ -563,11 +736,23 @@ export function RaceForm({
                   <strong>
                     {t.noOfBets}: {basketTotals.lineCount}
                   </strong>
-                  <small>{basketItems.length ? basketItems.slice(0, 3).map((item) => `${item.horseNo}${item.placeHorseNo ? `+${item.placeHorseNo}` : ""} ${getBetTypeLabel(item.betType)}`).join(" / ") : t.emptyBetSlip}</small>
+                  <small>
+                    {basketItems.length
+                      ? basketItems
+                          .slice(0, 3)
+                          .map(
+                            (item) =>
+                              `${item.horseNo}${item.placeHorseNo ? `+${item.placeHorseNo}` : ""} ${getBetTypeLabel(item.betType)}`,
+                          )
+                          .join(" / ")
+                      : t.emptyBetSlip}
+                  </small>
                 </button>
                 <div className="bet-slip-mobile-metric">
                   <span className="badge-label">{t.totalAmount}</span>
-                  <strong>{formatCoins(basketTotals.totalStake, language)}</strong>
+                  <strong>
+                    {formatCoins(basketTotals.totalStake, language)}
+                  </strong>
                 </div>
               </div>
 
@@ -577,7 +762,11 @@ export function RaceForm({
                     <span className="badge-label">{t.basket}</span>
                     <strong>{t.selectedBets}</strong>
                   </div>
-                  <button className="button secondary basket-slip-close" onClick={toggleBetSlip} type="button">
+                  <button
+                    className="button secondary basket-slip-close"
+                    onClick={toggleBetSlip}
+                    type="button"
+                  >
                     {t.hideBetslip}
                   </button>
                 </div>
@@ -585,11 +774,20 @@ export function RaceForm({
                 {visibleBetSlipItems.length ? (
                   <div className="basket-item-list">
                     {visibleBetSlipItems.map((item) => {
-                      const runner = getRunnerByHorseNo(raceCard.runners, item.horseNo);
+                      const runner = getRunnerByHorseNo(
+                        raceCard.runners,
+                        item.horseNo,
+                      );
                       const lineCount = getBetLineCount(item.betType);
                       const parsedStake = parseStakeInput(item.unitBetAmount);
-                      const lineTotal = parsedStake === null ? 0 : parsedStake * lineCount;
-                      const placeRunner = item.placeHorseNo ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo) : null;
+                      const lineTotal =
+                        parsedStake === null ? 0 : parsedStake * lineCount;
+                      const placeRunner = item.placeHorseNo
+                        ? getRunnerByHorseNo(
+                            raceCard.runners,
+                            item.placeHorseNo,
+                          )
+                        : null;
 
                       return (
                         <article className="basket-item-card" key={item.id}>
@@ -608,7 +806,8 @@ export function RaceForm({
                             <strong>
                               {item.horseNo} {item.horseName}
                             </strong>
-                            {item.betType === "WIN_PLACE_COMBO" && item.placeHorseNo ? (
+                            {item.betType === "WIN_PLACE_COMBO" &&
+                            item.placeHorseNo ? (
                               <strong>
                                 {item.placeHorseNo} {item.placeHorseName}
                               </strong>
@@ -616,13 +815,17 @@ export function RaceForm({
                             <span>{getBetTypeLabel(item.betType)}</span>
                           </div>
                           <div className="basket-item-stake">
-                            <label htmlFor={`basket-stake-${item.id}`}>{t.unitBet}</label>
+                            <label htmlFor={`basket-stake-${item.id}`}>
+                              {t.unitBet}
+                            </label>
                             <input
                               className="input"
                               id={`basket-stake-${item.id}`}
                               inputMode="numeric"
                               min="1"
-                              onChange={(event) => updateBasketStake(item.id, event.target.value)}
+                              onChange={(event) =>
+                                updateBasketStake(item.id, event.target.value)
+                              }
                               type="number"
                               value={item.unitBetAmount}
                             />
@@ -640,8 +843,13 @@ export function RaceForm({
                                   ? `W ${getRunnerLockedWinOdds(runner) ?? "-"}x / P ${getRunnerLockedPlaceOdds(placeRunner) ?? "-"}x`
                                   : getBetLineTypes(item.betType)
                                       .map((lineType) => {
-                                        const odds = lineType === "WIN" ? getRunnerLockedWinOdds(runner) : getRunnerLockedPlaceOdds(runner);
-                                        return odds === null ? "-" : `${lineType[0]} ${odds}x`;
+                                        const odds =
+                                          lineType === "WIN"
+                                            ? getRunnerLockedWinOdds(runner)
+                                            : getRunnerLockedPlaceOdds(runner);
+                                        return odds === null
+                                          ? "-"
+                                          : `${lineType[0]} ${odds}x`;
                                       })
                                       .join(" / ")}
                               </span>
@@ -662,7 +870,9 @@ export function RaceForm({
                   </div>
                   <div>
                     <span>{t.totalAmount}</span>
-                    <strong>{formatCoins(basketTotals.totalStake, language)}</strong>
+                    <strong>
+                      {formatCoins(basketTotals.totalStake, language)}
+                    </strong>
                   </div>
                   <div>
                     <span>{t.ifYouWin}</span>
@@ -684,7 +894,11 @@ export function RaceForm({
                 >
                   {t.clear}
                 </button>
-                <button className="button bet-slip-submit" disabled={pending || !canSubmitBasket} type="submit">
+                <button
+                  className="button bet-slip-submit"
+                  disabled={pending || !canSubmitBasket}
+                  type="submit"
+                >
                   {pending ? t.placing : t.placeBet}
                 </button>
               </div>
