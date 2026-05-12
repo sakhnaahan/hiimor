@@ -133,13 +133,7 @@ export function RaceForm({
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
   const basketTotals = getBasketTotals(basketItems);
   const router = useRouter();
-  const quickBetItems = basketItems.filter(
-    (item) => item.betType !== "WIN_PLACE_COMBO",
-  );
-  const comboBetItems = basketItems.filter(
-    (item) => item.betType === "WIN_PLACE_COMBO",
-  );
-  const visibleBetSlipItems = quickBetItems;
+  const visibleBetSlipItems = basketItems;
   const basketPayload = useMemo(
     () =>
       JSON.stringify(
@@ -713,7 +707,7 @@ export function RaceForm({
                   role="tab"
                   type="button"
                 >
-                  {t.openBetslip} <span>{quickBetItems.length}</span>
+                  {t.openBetslip} <span>{basketItems.length}</span>
                 </button>
                 {/* <button
                   aria-selected={betSlipTab === "basket"}
