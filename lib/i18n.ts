@@ -157,7 +157,7 @@ export const translations = {
     tbc: "TBC",
   },
   mn: {
-    brand: "Хииморь",
+    brand: "Хийморь",
     balance: "коин",
     navRace: "Уралдаан",
     navHistory: "Түүх",
@@ -183,7 +183,7 @@ export const translations = {
     logIn: "Нэвтрэх",
     forgotPassword: "Нууц үгээ мартсан бол админаар сэргээлгэнэ үү.",
     needAccess: "Эрх хэрэгтэй юу?",
-    requestSignup: "Бүртгүүлэх хүсэлт илгээх",
+    requestSignup: "Бүртгүүлэх  ",
     profile: "Миний мэдээлэл",
     manageAccount: "Хувийн уралдааны дансаа удирдана.",
     waitingResult: "Хариу хүлээгдэж байна",
@@ -197,7 +197,7 @@ export const translations = {
     odds: "коэф.",
     liveOdds: "Шууд",
     jockey: "Жокей (Jockey)",
-    draw: "Сугалаа (Draw)",
+    draw: "Гараа (Draw)",
     gear: "Хэрэгсэл (Gear)",
     last6: "Сүүлийн 6",
     horseWeight: "Морины жин",
@@ -215,8 +215,8 @@ export const translations = {
     max: "Бүгд",
     clear: "Арилгах",
     placeBet: "Бооцоо тавих",
-    openBetslip: "Бооцоо нээх",
-    hideBetslip: "Бооцоо нуух",
+    openBetslip: "Бооцоо ",
+    hideBetslip: "Хаах ",
     betSlip: "Бооцооны сагс",
     basket: "Сагс",
     addToBetSlip: "Нэмэх",
@@ -230,7 +230,8 @@ export const translations = {
     selectedBets: "Сонгосон бооцоо",
     placeBasketConfirm: "{amount} дүнтэй {count} бооцоо тавих уу?",
     placing: "Тавьж байна...",
-    placeBetConfirm: "{amount} коиноор No. {horseNo} {horseName} дээр бооцоо тавих уу?",
+    placeBetConfirm:
+      "{amount} коиноор No. {horseNo} {horseName} дээр бооцоо тавих уу?",
     pendingBets: "Дүн хүлээгдэж буй бооцоо",
     picked: "Сонгосон",
     raceHistory: "Уралдааны түүх",
@@ -289,7 +290,8 @@ export const translations = {
     user: "Хэрэглэгч",
     menu: "Цэс",
     closeMenu: "Цэс хаах",
-    adminRaceViewOnly: "Админ зөвхөн харах боломжтой. Тоглогчийн бооцоо идэвхгүй.",
+    adminRaceViewOnly:
+      "Админ зөвхөн харах боломжтой. Тоглогчийн бооцоо идэвхгүй.",
     coinsToAdd: "Нэмэх коин",
     coinsToSubtract: "Хасах коин",
     raceEconomy: "Уралдааны эдийн засаг",
@@ -323,8 +325,13 @@ export function translate(language: Language, key: TranslationKey) {
   return translations[language][key];
 }
 
-export function interpolate(template: string, values: Record<string, string | number>) {
-  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));
+export function interpolate(
+  template: string,
+  values: Record<string, string | number>,
+) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) =>
+    String(values[key] ?? ""),
+  );
 }
 
 export function resultLabel(language: Language, result: string) {
@@ -373,49 +380,64 @@ export function statusLabel(language: Language, status: string) {
 
 const serverMessageTranslations: Record<string, string> = {
   "Invalid signup details.": "Бүртгэлийн мэдээлэл буруу байна.",
-  "That username is already taken.": "Энэ хэрэглэгчийн нэр аль хэдийн ашиглагдаж байна.",
+  "That username is already taken.":
+    "Энэ хэрэглэгчийн нэр аль хэдийн ашиглагдаж байна.",
   "Signup request sent. Wait for admin approval before logging in.":
     "Бүртгүүлэх хүсэлт илгээгдлээ. Нэвтрэхээс өмнө админ батлахыг хүлээнэ үү.",
   "Invalid login details.": "Нэвтрэх мэдээлэл буруу байна.",
-  "Invalid username or password.": "Хэрэглэгчийн нэр эсвэл нууц үг буруу байна.",
+  "Invalid username or password.":
+    "Хэрэглэгчийн нэр эсвэл нууц үг буруу байна.",
   "Invalid password details.": "Нууц үгийн мэдээлэл буруу байна.",
   "Account was not found.": "Данс олдсонгүй.",
   "Current password is incorrect.": "Одоогийн нууц үг буруу байна.",
-  "Password changed. Other sessions were signed out.": "Нууц үг солигдлоо. Бусад төхөөрөмжөөс гаргалаа.",
+  "Password changed. Other sessions were signed out.":
+    "Нууц үг солигдлоо. Бусад төхөөрөмжөөс гаргалаа.",
   "Invalid user.": "Хэрэглэгч буруу байна.",
   "User was not found.": "Хэрэглэгч олдсонгүй.",
-  "You cannot reset this user's password.": "Энэ хэрэглэгчийн нууц үгийг сэргээх боломжгүй.",
+  "You cannot reset this user's password.":
+    "Энэ хэрэглэгчийн нууц үгийг сэргээх боломжгүй.",
   "Invalid recharge amount.": "Нэмэх коины дүн буруу байна.",
-  "Only approved users can be recharged.": "Зөвхөн баталгаажсан хэрэглэгчид коин нэмнэ.",
+  "Only approved users can be recharged.":
+    "Зөвхөн баталгаажсан хэрэглэгчид коин нэмнэ.",
   "Recharge failed.": "Коин нэмэхэд алдаа гарлаа.",
   "Coins recharged.": "Коин нэмэгдлээ.",
   "Invalid subtract amount.": "Хасах коины дүн буруу байна.",
-  "Only approved users can have coins subtracted.": "Зөвхөн баталгаажсан хэрэглэгчээс коин хасна.",
-  "Cannot subtract more coins than the user has.": "Хэрэглэгчийн үлдэгдлээс их коин хасах боломжгүй.",
+  "Only approved users can have coins subtracted.":
+    "Зөвхөн баталгаажсан хэрэглэгчээс коин хасна.",
+  "Cannot subtract more coins than the user has.":
+    "Хэрэглэгчийн үлдэгдлээс их коин хасах боломжгүй.",
   "Coin subtraction failed.": "Коин хасахад алдаа гарлаа.",
   "Coins subtracted.": "Коин хасагдлаа.",
   "Invalid race bet.": "Бооцооны мэдээлэл буруу байна.",
-  "HKJC racecard is unavailable. Try again shortly.": "HKJC уралдааны мэдээлэл түр байхгүй байна. Дараа дахин оролдоно уу.",
+  "HKJC racecard is unavailable. Try again shortly.":
+    "HKJC уралдааны мэдээлэл түр байхгүй байна. Дараа дахин оролдоно уу.",
   "Selected race is no longer available in the current HKJC racecard.":
     "Сонгосон уралдаан одоогийн HKJC мэдээлэлд байхгүй байна.",
   "HKJC race identity is unavailable. Try again shortly.":
     "HKJC уралдааны таних мэдээлэл байхгүй байна. Дараа дахин оролдоно уу.",
   "Selected horse is no longer available in the current HKJC racecard.":
     "Сонгосон морь одоогийн HKJC мэдээлэлд байхгүй байна.",
-  "Odds are unavailable. Try again shortly.": "Коэффициент түр байхгүй байна. Дараа дахин оролдоно уу.",
-  "Odds changed. Please confirm again.": "Коэффициент өөрчлөгдлөө. Дахин баталгаажуулна уу.",
+  "Odds are unavailable. Try again shortly.":
+    "Коэффициент түр байхгүй байна. Дараа дахин оролдоно уу.",
+  "Odds changed. Please confirm again.":
+    "Коэффициент өөрчлөгдлөө. Дахин баталгаажуулна уу.",
   "Approved account required.": "Баталгаажсан данс шаардлагатай.",
   "Insufficient coin balance.": "Коины үлдэгдэл хүрэлцэхгүй байна.",
   "Race failed.": "Бооцоо тавихад алдаа гарлаа.",
-  "Username must be at least 3 characters.": "Хэрэглэгчийн нэр хамгийн багадаа 3 тэмдэгт байна.",
-  "Username must be at most 32 characters.": "Хэрэглэгчийн нэр 32 тэмдэгтээс ихгүй байна.",
-  "Use only letters, numbers, and underscores.": "Зөвхөн үсэг, тоо, доогуур зураас ашиглана уу.",
-  "Password must be at least 8 characters.": "Нууц үг хамгийн багадаа 8 тэмдэгт байна.",
+  "Username must be at least 3 characters.":
+    "Хэрэглэгчийн нэр хамгийн багадаа 3 тэмдэгт байна.",
+  "Username must be at most 32 characters.":
+    "Хэрэглэгчийн нэр 32 тэмдэгтээс ихгүй байна.",
+  "Use only letters, numbers, and underscores.":
+    "Зөвхөн үсэг, тоо, доогуур зураас ашиглана уу.",
+  "Password must be at least 8 characters.":
+    "Нууц үг хамгийн багадаа 8 тэмдэгт байна.",
   "Password is too long.": "Нууц үг хэт урт байна.",
   "Current password is required.": "Одоогийн нууц үг шаардлагатай.",
   "Confirm your new password.": "Шинэ нууц үгээ давтана уу.",
   "New passwords do not match.": "Шинэ нууц үгүүд таарахгүй байна.",
-  "New password must be different from the current password.": "Шинэ нууц үг одоогийнхоос өөр байх ёстой.",
+  "New password must be different from the current password.":
+    "Шинэ нууц үг одоогийнхоос өөр байх ёстой.",
   "Choose a horse.": "Морь сонгоно уу.",
   "Horse number is too long.": "Морины дугаар хэт урт байна.",
   "Race date is required.": "Уралдааны огноо шаардлагатай.",

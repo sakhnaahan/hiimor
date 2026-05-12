@@ -189,7 +189,11 @@ textarea {
   inset: auto 0 0;
   height: 62px;
   background:
-    radial-gradient(ellipse at 18% 80%, rgba(255, 255, 255, 0.24) 0 8px, transparent 9px),
+    radial-gradient(
+      ellipse at 18% 80%,
+      rgba(255, 255, 255, 0.24) 0 8px,
+      transparent 9px
+    ),
     linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.18));
 }
 
@@ -201,6 +205,7 @@ textarea {
 
 .auth-shell {
   align-items: stretch;
+  height: fit-content;
 }
 
 .auth-hero {
@@ -244,6 +249,9 @@ textarea {
 .section-title {
   margin: 0 0 12px;
   font-size: 20px;
+  display: flex;
+  justify-content: center;
+  width: auto;
 }
 
 .subsection-title {
@@ -905,7 +913,9 @@ textarea {
 
 .race-app-hero {
   align-items: end;
-  background: linear-gradient(90deg, rgba(2, 31, 68, 0.82), rgba(0, 75, 124, 0.56)), url("/images/race-hero.webp") center / cover no-repeat;
+  background:
+    linear-gradient(90deg, rgba(2, 31, 68, 0.82), rgba(0, 75, 124, 0.56)),
+    url("/images/race-hero.webp") center / cover no-repeat;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -1529,6 +1539,7 @@ textarea {
 
   .section-title {
     font-size: 18px;
+    display: flex;
   }
 
   .stat {
@@ -1599,7 +1610,7 @@ textarea {
     margin-right: -10px;
     min-height: 100vh;
     overflow: hidden;
-    padding: 22px 14px calc(22px + env(safe-area-inset-bottom, 0));
+    padding: 160px 14px calc(22px + env(safe-area-inset-bottom, 0));
     position: relative;
   }
 
@@ -2365,7 +2376,10 @@ textarea {
     right: 0 !important;
     top: 0;
     transform: translateX(0);
-    transition: transform 200ms ease, opacity 180ms ease, visibility 180ms ease;
+    transition:
+      transform 200ms ease,
+      opacity 180ms ease,
+      visibility 180ms ease;
     width: min(88vw, 380px);
     z-index: 45;
   }

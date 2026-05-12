@@ -7,10 +7,9 @@ export default async function SignupPage() {
   const t = getTranslations(language);
 
   return (
-    <div className="grid grid-2 auth-shell">
-      <section className="hero panel auth-hero" />
+    <div className="xl:flex sm: auth-shell">
+      <section className="hero panel auth-hero w-full" />
       <section className="panel auth-panel">
-        <span className="auth-kicker">{t.brand}</span>
         <h2 className="section-title">{t.signup}</h2>
         <SignupForm language={language} />
       </section>
