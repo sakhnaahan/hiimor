@@ -66,7 +66,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
     raceNo: "1",
     quotedWinOdds: "4.8",
     quotedPlaceOdds: "1.8",
-    betAmount: "50",
+    betAmount: "100",
   };
   assert.equal(raceSchema.safeParse(validRaceBet).success, true);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, betType: "PLACE", quotedWinOdds: "" }).success, true);
@@ -74,6 +74,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
   assert.equal(raceSchema.safeParse({ ...validRaceBet, betType: "WIN_PLACE", quotedPlaceOdds: "" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, selectedHorseNo: "" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, racecourseCode: "S1" }).success, false);
+  assert.equal(raceSchema.safeParse({ ...validRaceBet, betAmount: "99" }).success, false);
   assert.equal(raceSchema.safeParse({ ...validRaceBet, betAmount: "0" }).success, false);
   const validBasketBet = {
     raceDate: "2026/05/09",
@@ -85,14 +86,14 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
         betType: "WIN",
         quotedWinOdds: "4.8",
         quotedPlaceOdds: "",
-        unitBetAmount: "50",
+        unitBetAmount: "100",
       },
       {
         selectedHorseNo: "2",
         betType: "WIN_PLACE",
         quotedWinOdds: "6.2",
         quotedPlaceOdds: "1.9",
-        unitBetAmount: "25",
+        unitBetAmount: "100",
       },
     ]),
   };
@@ -107,7 +108,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
           betType: "WIN_PLACE_COMBO",
           quotedWinOdds: "4.8",
           quotedPlaceOdds: "1.9",
-          unitBetAmount: "25",
+          unitBetAmount: "100",
         },
       ]),
     }).success,
@@ -123,7 +124,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
           betType: "WIN_PLACE_COMBO",
           quotedWinOdds: "4.8",
           quotedPlaceOdds: "1.9",
-          unitBetAmount: "25",
+          unitBetAmount: "100",
         },
       ]),
     }).success,
@@ -138,7 +139,7 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
           betType: "WIN_PLACE",
           quotedWinOdds: "6.2",
           quotedPlaceOdds: "",
-          unitBetAmount: "25",
+          unitBetAmount: "100",
         },
       ]),
     }).success,
@@ -153,14 +154,14 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
           betType: "WIN",
           quotedWinOdds: "4.8",
           quotedPlaceOdds: "",
-          unitBetAmount: "50",
+          unitBetAmount: "100",
         },
         {
           selectedHorseNo: "1",
           betType: "WIN",
           quotedWinOdds: "4.8",
           quotedPlaceOdds: "",
-          unitBetAmount: "50",
+          unitBetAmount: "100",
         },
       ]),
     }).success,

@@ -31,7 +31,7 @@ export function SignupForm({ language }: { language: Language }) {
         required
       />
       <p className="muted auth-alt-link">
-        {t.alreadyApproved} <Link href="/login">{t.logIn}</Link>.
+        {t.alreadyRegistered} <Link href="/login">{t.logIn}</Link>.
       </p>
     </ActionForm>
   );
@@ -62,7 +62,7 @@ export function LoginForm({ language }: { language: Language }) {
       />
       <p className="muted">{t.forgotPassword}</p>
       <p className="muted auth-alt-link">
-        {t.needAccess} <Link href="/signup">{t.requestSignup}</Link>.
+        {t.needAccount} <Link href="/signup">{t.requestSignup}</Link>.
       </p>
     </ActionForm>
   );

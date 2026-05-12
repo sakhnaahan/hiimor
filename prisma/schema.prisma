@@ -12,8 +12,8 @@ model User {
   username         String            @unique
   passwordHash     String            @map("password_hash")
   role             String            @default("player")
-  status           String            @default("pending")
-  coinBalance      Int               @default(0) @map("coin_balance")
+  status           String            @default("approved")
+  coinBalance      Int               @default(10000) @map("coin_balance")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
   sessions         Session[]

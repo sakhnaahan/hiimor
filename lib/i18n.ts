@@ -29,10 +29,12 @@ export const translations = {
     changePassword: "Change password",
     changing: "Changing...",
     alreadyApproved: "Already approved?",
+    alreadyRegistered: "Already registered?",
     logIn: "Log in",
     forgotPassword: "Forgot password? Ask an admin to reset it.",
     needAccess: "Need access?",
-    requestSignup: "Request signup",
+    needAccount: "Need an account?",
+    requestSignup: "Sign up",
     profile: "Profile",
     manageAccount: "Manage your private race account.",
     waitingResult: "Waiting result",
@@ -157,6 +159,8 @@ export const translations = {
     tbc: "TBC",
   },
   mn: {
+    alreadyRegistered: "Already registered?",
+    needAccount: "Need an account?",
     brand: "Хийморь",
     balance: "коин",
     navRace: "Уралдаан",
@@ -379,6 +383,8 @@ export function statusLabel(language: Language, status: string) {
 }
 
 const serverMessageTranslations: Record<string, string> = {
+  "Account created. You can log in now.": "Account created. You can log in now.",
+  "Your account cannot log in.": "Your account cannot log in.",
   "Invalid signup details.": "Бүртгэлийн мэдээлэл буруу байна.",
   "That username is already taken.":
     "Энэ хэрэглэгчийн нэр аль хэдийн ашиглагдаж байна.",

@@ -19,10 +19,11 @@ import {
   type RaceBetType,
 } from "@/lib/race-betting-ui";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
+import { MIN_BET_AMOUNT } from "@/lib/rules";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { useRouter } from "next/navigation";
 
-const DEFAULT_UNIT_BET = "10";
+const DEFAULT_UNIT_BET = String(MIN_BET_AMOUNT);
 
 type BasketItem = {
   id: string;
@@ -822,7 +823,7 @@ export function RaceForm({
                               className="input"
                               id={`basket-stake-${item.id}`}
                               inputMode="numeric"
-                              min="1"
+                              min={MIN_BET_AMOUNT}
                               onChange={(event) =>
                                 updateBasketStake(item.id, event.target.value)
                               }

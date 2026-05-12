@@ -43,6 +43,8 @@ function runner(horseNo: string, name: string): HkjcRunner {
 
 test("stake input accepts positive integer coins only", () => {
   assert.equal(parseStakeInput("10000"), 10000);
+  assert.equal(parseStakeInput("100"), 100);
+  assert.equal(parseStakeInput("99"), null);
   assert.equal(parseStakeInput("0"), null);
   assert.equal(parseStakeInput("-10"), null);
   assert.equal(parseStakeInput("10.5"), null);
@@ -74,18 +76,24 @@ test("win/place bet type expands to the correct bet lines", () => {
 test("basket totals count expanded lines and invalid stakes", () => {
   assert.deepEqual(
     getBasketTotals([
-      { betType: "WIN", unitBetAmount: "10" },
-      { betType: "PLACE", unitBetAmount: "20" },
-      { betType: "WIN_PLACE", unitBetAmount: "30" },
+      { betType: "WIN", unitBetAmount: "100" },
+      { betType: "PLACE", unitBetAmount: "200" },
+      { betType: "WIN_PLACE", unitBetAmount: "300" },
     ]),
     {
       itemCount: 3,
       lineCount: 4,
-      totalStake: 90,
+      totalStake: 900,
       invalidStakeCount: 0,
     },
   );
   assert.deepEqual(getBasketTotals([{ betType: "WIN", unitBetAmount: "" }]), {
+    itemCount: 1,
+    lineCount: 1,
+    totalStake: 0,
+    invalidStakeCount: 1,
+  });
+  assert.deepEqual(getBasketTotals([{ betType: "WIN", unitBetAmount: 99 }]), {
     itemCount: 1,
     lineCount: 1,
     totalStake: 0,
@@ -96,7 +104,7 @@ test("basket totals count expanded lines and invalid stakes", () => {
 test("potential payout uses app multiplier and floors whole coins", () => {
   assert.equal(calculatePotentialPayout("10000", 2), 20000);
   assert.equal(calculatePotentialPayout("10000", 2.5), 25000);
-  assert.equal(calculatePotentialPayout("3", 1.5), 4);
+  assert.equal(calculatePotentialPayout("101", 1.5), 151);
   assert.equal(calculatePotentialPayout("", 2), 0);
 });
 

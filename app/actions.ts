@@ -30,6 +30,7 @@ import { isMainAdminUsername } from "@/lib/admin";
 import { canResetUserPassword, generateTemporaryPassword } from "@/lib/password-reset";
 import { getCurrentLanguage } from "@/lib/language";
 import { translateServerMessage } from "@/lib/i18n";
+import { STARTING_COIN_BALANCE } from "@/lib/rules";
 
 export type ActionState = {
   ok?: boolean;
@@ -86,12 +87,12 @@ export async function signupAction(_: ActionState, formData: FormData): Promise<
       username,
       passwordHash,
       role: "player",
-      status: "pending",
-      coinBalance: 0,
+      status: "approved",
+      coinBalance: STARTING_COIN_BALANCE,
     },
   });
 
-  return { ok: true, message: await localizedMessage("Signup request sent. Wait for admin approval before logging in.") };
+  return { ok: true, message: await localizedMessage("Account created. You can log in now.") };
 }
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -117,6 +118,20 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
   const passwordOk = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!passwordOk) {
     return { message: await localizedMessage("Invalid username or password.") };
+  }
+
+  if (user.status === "rejected") {
+    return { message: await localizedMessage("Your account cannot log in.") };
+  }
+
+  if (user.status !== "approved") {
+    const coinBalance = Math.max(user.coinBalance, STARTING_COIN_BALANCE);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { status: "approved", coinBalance },
+    });
+    user.status = "approved";
+    user.coinBalance = coinBalance;
   }
 
   if (user.status !== "approved") {

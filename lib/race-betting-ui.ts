@@ -1,5 +1,6 @@
 import type { HkjcRunner } from "@/lib/hkjc-racecard";
 import { parseOdds } from "@/lib/hkjc-odds";
+import { MIN_BET_AMOUNT } from "@/lib/rules";
 
 export type QuickStakeAction = "max" | "clear";
 export type RaceBetType = "WIN" | "PLACE" | "WIN_PLACE" | "WIN_PLACE_COMBO";
@@ -16,7 +17,7 @@ export function parseStakeInput(value: string) {
   }
 
   const amount = Number.parseInt(value, 10);
-  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+  return Number.isSafeInteger(amount) && amount >= MIN_BET_AMOUNT ? amount : null;
 }
 
 export function getQuickStakeValue(action: QuickStakeAction, balance: number) {
@@ -130,7 +131,11 @@ export function getBasketTotals(items: readonly RaceBasketTotalItem[]) {
   return items.reduce(
     (totals, item) => {
       const unitStake =
-        typeof item.unitBetAmount === "number" ? item.unitBetAmount : parseStakeInput(item.unitBetAmount);
+        typeof item.unitBetAmount === "number"
+          ? Number.isSafeInteger(item.unitBetAmount) && item.unitBetAmount >= MIN_BET_AMOUNT
+            ? item.unitBetAmount
+            : null
+          : parseStakeInput(item.unitBetAmount);
       const lineCount = getBetLineCount(item.betType);
 
       return {

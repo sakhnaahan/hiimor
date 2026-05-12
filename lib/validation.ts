@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isMainHkjcRacecourse } from "@/lib/hkjc-racecard";
+import { MIN_BET_AMOUNT } from "@/lib/rules";
 
 const raceSingleBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE"]);
 const raceBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE", "WIN_PLACE_COMBO"]);
@@ -60,7 +61,7 @@ export const raceSchema = z.object({
   raceNo: z.coerce.number().int().positive().max(99),
   quotedWinOdds: z.string().trim().max(20).optional().default(""),
   quotedPlaceOdds: z.string().trim().max(20).optional().default(""),
-  betAmount: z.coerce.number().int().positive().max(1_000_000),
+  betAmount: z.coerce.number().int().min(MIN_BET_AMOUNT, `Minimum bet is ${MIN_BET_AMOUNT} coins.`).max(1_000_000),
 }).superRefine((value, context) => {
   if ((value.betType === "WIN" || value.betType === "WIN_PLACE") && !value.quotedWinOdds) {
     context.addIssue({
@@ -85,7 +86,7 @@ const raceBasketItemSchema = z.object({
   betType: raceBetTypeSchema,
   quotedWinOdds: z.string().trim().max(20).optional().default(""),
   quotedPlaceOdds: z.string().trim().max(20).optional().default(""),
-  unitBetAmount: z.coerce.number().int().positive().max(1_000_000),
+  unitBetAmount: z.coerce.number().int().min(MIN_BET_AMOUNT, `Minimum bet is ${MIN_BET_AMOUNT} coins.`).max(1_000_000),
 }).superRefine((value, context) => {
   if ((value.betType === "WIN" || value.betType === "WIN_PLACE") && !value.quotedWinOdds) {
     context.addIssue({
