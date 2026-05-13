@@ -12,7 +12,21 @@
   --gold: #bc7a1c;
   --blue: #285f8f;
 }
+.mobile-nav svg {
+  width: 22px;
+  height: 22px;
+}
 
+/* react-icons */
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  color: #111827 !important;
+}
+/* хуучин custom svg icon-д л apply хийх */
+.mobile-nav svg path {
+  stroke: currentColor;
+}
 * {
   box-sizing: border-box;
 }
@@ -2044,7 +2058,7 @@ textarea {
     color: #050505;
     display: grid;
     font-size: 18px;
-    font-weight: 500;
+    font-weight: 900;
     line-height: 1.42;
     margin: 0;
   }

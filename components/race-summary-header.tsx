@@ -44,11 +44,11 @@ export function RaceSummaryHeader({
             {t.race} {raceCard.raceNo}
           </strong>
         </div>
-        <div className="race-app-actions" aria-label="Race account shortcuts">
+        {/* <div className="race-app-actions" aria-label="Race account shortcuts">
           <span>{pendingRaceCount}</span>
           <span>$</span>
           <span>@</span>
-        </div>
+        </div> */}
       </div>
 
       <div className="race-notice-strip">
@@ -56,7 +56,11 @@ export function RaceSummaryHeader({
         <strong>
           {raceCard.oddsAvailable ? t.liveOdds : t.racecardUnavailable}
         </strong>
-        <a href={liveStreamUrl} rel="noopener noreferrer" target="_blank">
+        <a
+          href={"https://www.youtube.com/@HKJC/streams"}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           {t.watchLive}
         </a>
       </div>
@@ -72,7 +76,7 @@ export function RaceSummaryHeader({
           <h1 className="race-title">{raceCard.raceName}</h1>
           <p className="muted race-summary-line">{compactDetails}</p>
           {raceDetails ? (
-            <p className="muted race-summary-desktop-line">{raceDetails}</p>
+            <p className="muted race-summary-desktop-line ">{raceDetails}</p>
           ) : null}
           <p className="race-mobile-details">
             {mobileDetailLines.map((line) => (

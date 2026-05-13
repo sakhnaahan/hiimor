@@ -20,7 +20,7 @@ import {
 } from "@/lib/race-betting-ui";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
 import { MIN_BET_AMOUNT } from "@/lib/rules";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp, FaCoins } from "react-icons/fa6";
 import { useRouter } from "next/navigation";
 
 const DEFAULT_UNIT_BET = String(MIN_BET_AMOUNT);
@@ -499,12 +499,22 @@ export function RaceForm({
                     key={`${runner.horseNo}-${runner.brandNo}`}
                   >
                     <div className="runner-row-main">
-                      <span className="runner-rail">
+                      <span
+                        className="runner-rail"
+                        onClick={() =>
+                          setExpandedHorseNo(expanded ? null : runner.horseNo)
+                        }
+                      >
                         <span className="runner-flag" />
                         <strong>{runner.horseNo}</strong>
                         <SilkPlaceholder horseNo={runner.horseNo} />
                       </span>
-                      <span className="runner-core">
+                      <span
+                        className="runner-core"
+                        onClick={() =>
+                          setExpandedHorseNo(expanded ? null : runner.horseNo)
+                        }
+                      >
                         <strong>{runner.name}</strong>
                         <span className="runner-people">
                           <span>
@@ -874,7 +884,7 @@ export function RaceForm({
                     <strong>{formatCoins(potentialPayout, language)}</strong>
                   </div>
                   <div>
-                    <span>{t.balance}</span>
+                    <FaCoins color="gold" />
                     <strong>{formatCoins(balance, language)}</strong>
                   </div>
                 </div>
