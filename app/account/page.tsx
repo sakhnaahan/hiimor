@@ -16,24 +16,45 @@ export default async function AccountPage() {
         <div className="section-heading">
           <div>
             <h2 className="section-title">{t.profile}</h2>
-            <p className="muted">{t.manageAccount}</p>
           </div>
         </div>
+
+        {/* Warning */}
+        <div
+          style={{
+            marginBottom: "1rem",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            background: "rgba(59, 130, 246, 0.12)",
+            border: "1px solid rgba(59, 130, 246, 0.35)",
+            color: "#93c5fd",
+            fontSize: "0.95rem",
+            lineHeight: 1.5,
+          }}
+        >
+          ℹ️ Энэхүү платформ нь морин уралдаан болон betting system-ийн
+          ажиллагааг сонирхогчид, суралцагчдад танилцуулах demo платформ болно.
+          Бодит мөнгөний бооцоо болон санхүүгийн гүйлгээ хийгдэхгүй.
+        </div>
+
         <div className="race-status-strip account-summary">
           <div>
             <span className="badge-label">{t.username}</span>
             <strong>{user.username}</strong>
           </div>
-          <div className="account-language-card">
+
+          {/* <div className="account-language-card">
             <span className="badge-label">{t.selectedLanguage}</span>
             <LanguageSwitch language={language} label={t.selectedLanguage} />
-          </div>
+          </div> */}
         </div>
       </section>
+
       <section className="panel">
         <h2 className="section-title">{t.changePassword}</h2>
         <ChangePasswordForm language={language} />
       </section>
+
       <section className="panel">
         <form action={logoutAction}>
           <button className="button secondary" type="submit">

@@ -4,53 +4,47 @@ import { useEffect, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getTranslations, type Language } from "@/lib/i18n";
+import { GiHorseHead, GiTicket } from "react-icons/gi";
+import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import { BsThreeDots } from "react-icons/bs";
+import { PiHorseFill } from "react-icons/pi";
 
 type MobileNavIcon = "race" | "list" | "betslip" | "more";
 
 function NavIcon({ icon }: { icon: MobileNavIcon }) {
+  const className = "nav-icon";
+
   if (icon === "race") {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M4 15h9l4-5 3 5" />
-        <path d="M6 15v4" />
-        <path d="M14 15v4" />
-        <path d="M10 9h4l2 3" />
-      </svg>
+      <PiHorseFill
+        className="nav-icon"
+        style={{
+          color: "#111827",
+          fill: "currentColor",
+          stroke: "currentColor",
+        }}
+      />
     );
   }
 
   if (icon === "list") {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M9 6h11" />
-        <path d="M9 12h11" />
-        <path d="M9 18h11" />
-        <path d="M4 6h.01" />
-        <path d="M4 12h.01" />
-        <path d="M4 18h.01" />
-      </svg>
-    );
+    return <HiOutlineClipboardDocumentList className={className} />;
   }
 
   if (icon === "betslip") {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M7 3h8l3 3v15H7z" />
-        <path d="M15 3v4h4" />
-        <path d="M10 11h5" />
-        <path d="M10 15h5" />
-        <path d="M8 8h.01" />
-      </svg>
+      <GiTicket
+        className="nav-icon"
+        style={{
+          color: "#111827",
+          fill: "currentColor",
+          stroke: "currentColor",
+        }}
+      />
     );
   }
 
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M5 12h.01" />
-      <path d="M12 12h.01" />
-      <path d="M19 12h.01" />
-    </svg>
-  );
+  return <BsThreeDots className={className} />;
 }
 
 export function MobileBottomNav({ language }: { language: Language }) {
@@ -69,10 +63,30 @@ export function MobileBottomNav({ language }: { language: Language }) {
   }, []);
 
   const items = [
-    { activePath: "/race", href: "/race", label: t.navRace, icon: "race" as const },
-    { activePath: "/history", href: "/history", label: t.navHistory, icon: "list" as const },
-    { activePath: "/race", href: "/race#betslip", label: t.navBetslip, icon: "betslip" as const },
-    { activePath: "/account", href: "/account", label: t.navAccount, icon: "more" as const },
+    {
+      activePath: "/race",
+      href: "/race",
+      label: t.navRace,
+      icon: "race" as const,
+    },
+    {
+      activePath: "/history",
+      href: "/history",
+      label: t.navHistory,
+      icon: "list" as const,
+    },
+    {
+      activePath: "/race",
+      href: "/race#betslip",
+      label: t.navBetslip,
+      icon: "betslip" as const,
+    },
+    {
+      activePath: "/account",
+      href: "/account",
+      label: t.navAccount,
+      icon: "more" as const,
+    },
   ];
 
   function openBetSlip(event: MouseEvent<HTMLAnchorElement>) {
