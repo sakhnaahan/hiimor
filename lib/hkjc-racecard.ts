@@ -1,5 +1,6 @@
 import { load } from "cheerio";
 import { calculateMarketChance, getHkjcRunnerOdds, parseOdds } from "@/lib/hkjc-odds";
+import { readStoredHkjcRaceCard, upsertHkjcRaceCardSnapshot } from "@/lib/hkjc-snapshots";
 
 const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racecard";
 const HKJC_FIXTURE_URL = "https://racing.hkjc.com/en-us/local/information/fixture";
@@ -263,7 +264,7 @@ export type HkjcRaceCardResult =
       sourceUrl: string;
     };
 
-type RaceRequest = {
+export type RaceRequest = {
   raceDate?: string;
   racecourse?: string;
   raceNo?: number;
@@ -320,7 +321,7 @@ type HkjcGraphqlResponse = {
   errors?: Array<{ message?: string }>;
 };
 
-type FixtureMeeting = {
+export type FixtureMeeting = {
   raceDate: string;
   racecourseCode: string;
   raceCount: number;
@@ -390,6 +391,10 @@ function normalizeRaceDateForGraphql(value: string | undefined) {
 
 function normalizeRaceDateForUrl(value: string | undefined) {
   return value ? value.replace(/-/g, "/") : undefined;
+}
+
+export function normalizeHkjcRaceDate(value: string) {
+  return normalizeRaceDateForUrl(value) ?? value;
 }
 
 function formatRaceStartTime(value: string | null | undefined) {
@@ -880,7 +885,7 @@ function pickFallbackMeeting(meetings: FixtureMeeting[], request: RaceRequest = 
   return meetings[0] ?? nextScheduledMainMeeting();
 }
 
-function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceRequest = {}): HkjcRaceCard {
+export function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceRequest = {}): HkjcRaceCard {
   const raceCount = Math.max(1, meeting.raceCount);
   const requestedRaceNo = Number(request.raceNo);
   const raceNo =
@@ -919,6 +924,7 @@ function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceRequest = 
     })),
     runners: FALLBACK_RUNNER_NAMES.map((name, index) => {
       const winOdds = FALLBACK_WIN_ODDS[index] ?? FALLBACK_WIN_ODDS[FALLBACK_WIN_ODDS.length - 1];
+      const placeOdds = String(Math.max(1.1, Math.round((Number(winOdds) / 2) * 10) / 10));
       return {
         horseNo: String(index + 1),
         last6Runs: "",
@@ -936,16 +942,16 @@ function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceRequest = 
         sex: "",
         daysSinceLastRun: "",
         gear: "",
-      winOdds,
-      marketChance: calculateMarketChance(winOdds) ?? undefined,
-      hotFavourite: index === 0,
-      oddsAvailable: true,
-      placeOdds: String(Math.max(1.1, Math.round((Number(winOdds) / 2) * 10) / 10)),
-      placeMarketChance: calculateMarketChance(String(Math.max(1.1, Math.round((Number(winOdds) / 2) * 10) / 10))) ?? undefined,
-      placeOddsAvailable: true,
-      oddsLastUpdateTime,
-    };
-  }),
+        winOdds,
+        marketChance: calculateMarketChance(winOdds) ?? undefined,
+        hotFavourite: index === 0,
+        oddsAvailable: true,
+        placeOdds,
+        placeMarketChance: calculateMarketChance(placeOdds) ?? undefined,
+        placeOddsAvailable: true,
+        oddsLastUpdateTime,
+      };
+    }),
   };
 }
 
@@ -953,7 +959,7 @@ export function isLocalMainRaceCard(raceCard: Pick<HkjcRaceCard, "sourceUrl">) {
   return raceCard.sourceUrl.startsWith(LOCAL_MAIN_RACECARD_URL);
 }
 
-async function getLocalMainRaceCardFallback(request: RaceRequest = {}) {
+export async function getFallbackMainHkjcMeeting(request: RaceRequest = {}) {
   const sanitizedRequest = sanitizeRaceRequest(request);
 
   try {
@@ -967,16 +973,20 @@ async function getLocalMainRaceCardFallback(request: RaceRequest = {}) {
 
     if (response.ok) {
       const meetings = parseMainHkjcFixtureMeetings(await response.text());
-      return buildLocalMainRaceCard(pickFallbackMeeting(meetings, sanitizedRequest), sanitizedRequest);
+      return pickFallbackMeeting(meetings, sanitizedRequest);
     }
   } catch {
     // Fall through to the built-in schedule when HKJC fixture HTML is unavailable.
   }
 
-  return buildLocalMainRaceCard(pickFallbackMeeting([], sanitizedRequest), sanitizedRequest);
+  return pickFallbackMeeting([], sanitizedRequest);
 }
 
-export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
+export async function getLocalMainRaceCardFallback(request: RaceRequest = {}) {
+  return buildLocalMainRaceCard(await getFallbackMainHkjcMeeting(request), sanitizeRaceRequest(request));
+}
+
+export async function getLiveHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
   const sanitizedRequest = sanitizeRaceRequest(request);
   const sourceUrl = buildRaceCardUrl(sanitizedRequest);
 
@@ -1024,6 +1034,38 @@ export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promis
       sourceUrl,
     };
   }
+}
+
+function inferSnapshotStatus(raceCard: HkjcRaceCard) {
+  return isLocalMainRaceCard(raceCard)
+    ? { meetingStatus: "SCHEDULED", raceStatus: "FALLBACK" }
+    : { meetingStatus: "OPEN", raceStatus: "OPEN" };
+}
+
+export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
+  const stored = await readStoredHkjcRaceCard(request).catch(() => null);
+  if (stored?.isFresh) {
+    return { ok: true, raceCard: stored.raceCard };
+  }
+
+  const live = await getLiveHkjcUpcomingRaceCard(request);
+  if (live.ok) {
+    const snapshotStatus = inferSnapshotStatus(live.raceCard);
+    await upsertHkjcRaceCardSnapshot(live.raceCard, {
+      ...snapshotStatus,
+      raceCount: live.raceCard.raceOptions.length,
+      currentRaceNo: live.raceCard.raceNo,
+    }).catch((error) => {
+      console.error("Failed to persist HKJC racecard snapshot", error);
+    });
+    return live;
+  }
+
+  if (stored) {
+    return { ok: true, raceCard: stored.raceCard };
+  }
+
+  return live;
 }
 
 async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {

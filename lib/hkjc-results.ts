@@ -34,7 +34,7 @@ function stripBrandNo(horseName: string) {
 
 export function buildHkjcResultsUrl(request: HkjcRaceResultRequest) {
   const url = new URL(HKJC_RESULTS_URL);
-  url.searchParams.set("RaceDate", request.raceDate);
+  url.searchParams.set("RaceDate", request.raceDate.replace(/-/g, "/"));
   url.searchParams.set("RaceNo", String(request.raceNo));
   url.searchParams.set("Racecourse", request.racecourseCode);
   return url.toString();

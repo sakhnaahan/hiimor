@@ -192,7 +192,7 @@ export async function getHkjcRunnerOdds({
     body: JSON.stringify({
       query: ODDS_QUERY,
       variables: {
-        date: raceDate,
+        date: raceDate.replace(/\//g, "-"),
         venueCode: racecourseCode,
         oddsTypes: ["WIN", "PLA"],
         raceNo,

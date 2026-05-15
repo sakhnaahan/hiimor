@@ -11,6 +11,38 @@
   --red: #9f2d3a;
   --gold: #bc7a1c;
   --blue: #285f8f;
+  --brand-primary: #1f6b4f;
+  --brand-strong: #154c39;
+  --brand-ink: #154c39;
+  --brand-soft: #edf7f1;
+  --brand-link: #1f6b4f;
+  --brand-ring: rgba(31, 107, 79, 0.16);
+  --brand-ring-subtle: rgba(31, 107, 79, 0.12);
+  --brand-ring-strong: rgba(31, 107, 79, 0.32);
+  --brand-hero-start: rgba(21, 76, 57, 0.82);
+  --brand-hero-end: rgba(31, 107, 79, 0.56);
+  --success: #1f6b4f;
+  --success-strong: #154c39;
+  --success-border: rgba(31, 107, 79, 0.35);
+  --success-border-strong: rgba(31, 107, 79, 0.4);
+  --error: #9f2d3a;
+  --error-border: rgba(159, 45, 58, 0.35);
+  --error-border-strong: rgba(159, 45, 58, 0.45);
+  --warning: #bc7a1c;
+}
+
+.player-mobile-shell,
+.admin-mobile-shell {
+  --brand-primary: #0b55a0;
+  --brand-strong: #0b3b78;
+  --brand-ink: #0b315f;
+  --brand-soft: #eef6ff;
+  --brand-link: #235fa7;
+  --brand-ring: rgba(11, 85, 160, 0.16);
+  --brand-ring-subtle: rgba(11, 85, 160, 0.12);
+  --brand-ring-strong: rgba(11, 85, 160, 0.32);
+  --brand-hero-start: rgba(2, 31, 68, 0.82);
+  --brand-hero-end: rgba(0, 75, 124, 0.56);
 }
 .mobile-nav svg {
   width: 22px;
@@ -103,7 +135,7 @@ textarea {
 }
 
 .language-switch button.active {
-  background: var(--green);
+  background: var(--brand-primary);
   color: white;
 }
 
@@ -123,7 +155,7 @@ textarea {
 }
 
 .nav-balance {
-  color: var(--green-dark);
+  color: var(--brand-strong);
   font-weight: 800;
 }
 
@@ -131,6 +163,49 @@ textarea {
 .link-button:hover {
   border-color: var(--line);
   color: var(--foreground);
+}
+
+.player-mobile-shell .brand,
+.admin-mobile-shell .brand {
+  color: var(--brand-strong);
+}
+
+.player-mobile-shell .topbar-nav a:hover,
+.player-mobile-shell .topbar-nav .link-button:hover,
+.admin-mobile-shell .topbar-nav a:hover,
+.admin-mobile-shell .topbar-nav .link-button:hover {
+  border-color: var(--brand-ring-strong);
+  color: var(--brand-strong);
+}
+
+.player-mobile-shell :is(
+    .button,
+    .language-switch button,
+    .topbar-nav a,
+    .topbar-nav .link-button,
+    .race-tab,
+    .combo-mode-switch button,
+    .combo-draft button,
+    .bet-type-switch button,
+    .runner-odds-grid > button,
+    .quick-stakes button,
+    .source-link
+  ):focus-visible,
+.admin-mobile-shell :is(
+    .button,
+    .language-switch button,
+    .topbar-nav a,
+    .topbar-nav .link-button,
+    .race-tab,
+    .combo-mode-switch button,
+    .combo-draft button,
+    .bet-type-switch button,
+    .runner-odds-grid > button,
+    .quick-stakes button,
+    .source-link
+  ):focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
 }
 
 .main {
@@ -184,7 +259,7 @@ textarea {
 }
 
 .admin-link-card:hover {
-  border-color: var(--green);
+  border-color: var(--brand-primary);
 }
 
 .hero {
@@ -217,39 +292,157 @@ textarea {
   padding: 28px;
 }
 
+.page:has(.auth-shell) .topbar {
+  display: none;
+}
+
+.page:has(.auth-shell) .main {
+  padding: 0;
+}
+
+.page:has(.auth-shell) .main.shell {
+  margin: 0;
+  width: 100%;
+}
+
+.auth-alt-link {
+  display: block;
+}
+
 .auth-shell {
-  align-items: stretch;
-  height: fit-content;
+  background:
+    linear-gradient(180deg, rgba(2, 16, 34, 0.22), rgba(2, 16, 34, 0.82)),
+    url("/images/race-hero.webp") center / cover no-repeat;
+  align-items: center;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: clamp(32px, 6vw, 72px);
+  position: relative;
+}
+
+.auth-shell::before {
+  background: rgba(11, 49, 95, 0.58);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.auth-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 .auth-hero {
-  min-height: 420px;
+  display: none;
 }
 
 .auth-panel {
   align-content: center;
+  align-self: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   display: grid;
   gap: 16px;
+  min-height: 0;
+  padding: clamp(26px, 4vw, 40px);
+  position: relative;
+  width: min(100%, 520px);
+  z-index: 1;
+}
+
+.auth-panel::before {
+  background: var(--brand-strong);
+  border-radius: 999px;
+  content: "";
+  height: 5px;
+  justify-self: center;
+  margin-bottom: 4px;
+  width: 52px;
 }
 
 .auth-kicker {
-  color: var(--green-dark);
-  font-size: 13px;
-  font-style: italic;
+  color: var(--brand-strong);
+  font-size: 22px;
   font-weight: 900;
-  letter-spacing: 0;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .auth-panel .section-title {
-  color: #0b315f;
-  font-size: 30px;
-  margin-bottom: 4px;
+  color: #111827;
+  font-size: clamp(28px, 3vw, 36px);
+  margin: 0;
+}
+
+.auth-panel .form {
+  gap: 12px;
+}
+
+.auth-panel .field label {
+  color: var(--brand-ink);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.auth-panel .input {
+  background: #f7fbff;
+  border-color: rgba(11, 49, 95, 0.2);
+  border-radius: 10px;
+  color: var(--brand-ink);
+  min-height: 48px;
+}
+
+.auth-panel .password-visibility-button {
+  color: var(--brand-ink);
+  height: 38px;
+  right: 6px;
+  width: 38px;
+}
+
+.auth-panel .password-visibility-button:hover {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.auth-panel .button {
+  background: #ffc400;
+  border: 0;
+  border-radius: 999px;
+  color: var(--brand-ink);
+  font-size: 18px;
+  font-weight: 900;
+  min-height: 52px;
+}
+
+.auth-panel .button:hover {
+  background: #ffd23a;
+}
+
+.auth-panel .muted {
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.auth-panel .muted a {
+  color: var(--brand-strong);
 }
 
 .auth-panel .auth-alt-link a {
-  color: #0b55a0;
+  color: var(--brand-strong);
   font-weight: 900;
+}
+
+.auth-panel .message {
+  background: #fff8d8;
+  border-color: rgba(255, 196, 0, 0.55);
+  border-radius: 10px;
 }
 
 .hero h1,
@@ -379,8 +572,8 @@ textarea {
 }
 
 .button {
-  border: 1px solid var(--green-dark);
-  background: var(--green);
+  border: 1px solid var(--brand-strong);
+  background: var(--brand-primary);
   color: white;
   border-radius: 6px;
   padding: 10px 14px;
@@ -389,7 +582,7 @@ textarea {
 }
 
 .button:hover {
-  background: var(--green-dark);
+  background: var(--brand-strong);
 }
 
 .button.secondary {
@@ -421,13 +614,13 @@ textarea {
 }
 
 .message.ok {
-  border-color: rgba(31, 107, 79, 0.4);
-  color: var(--green-dark);
+  border-color: var(--success-border-strong);
+  color: var(--success-strong);
 }
 
 .message.error {
-  border-color: rgba(159, 45, 58, 0.45);
-  color: var(--red);
+  border-color: var(--error-border-strong);
+  color: var(--error);
 }
 
 .table-wrap {
@@ -465,13 +658,13 @@ textarea {
 }
 
 .badge.green {
-  border-color: rgba(31, 107, 79, 0.35);
-  color: var(--green-dark);
+  border-color: var(--success-border);
+  color: var(--success-strong);
 }
 
 .badge.red {
-  border-color: rgba(159, 45, 58, 0.35);
-  color: var(--red);
+  border-color: var(--error-border);
+  color: var(--error);
 }
 
 .pending-status {
@@ -481,12 +674,12 @@ textarea {
 }
 
 .amount-positive {
-  color: var(--green-dark);
+  color: var(--success-strong);
   font-weight: 800;
 }
 
 .amount-negative {
-  color: var(--red);
+  color: var(--error);
   font-weight: 800;
 }
 
@@ -551,8 +744,8 @@ textarea {
 }
 
 .runner-signal.positive {
-  border-color: rgba(11, 85, 160, 0.32);
-  color: var(--green-dark);
+  border-color: var(--success-border);
+  color: var(--success-strong);
 }
 
 .runner-signal.warning {
@@ -620,9 +813,9 @@ textarea {
 }
 
 .race-tab.active {
-  border-color: var(--green);
-  color: var(--green-dark);
-  box-shadow: 0 0 0 3px rgba(11, 85, 160, 0.12);
+  border-color: var(--brand-primary);
+  color: var(--brand-strong);
+  box-shadow: 0 0 0 3px var(--brand-ring-subtle);
 }
 
 .runner-list {
@@ -660,8 +853,8 @@ textarea {
 }
 
 .combo-mode-switch button.active {
-  background: #0b3b78;
-  border-color: #0b3b78;
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
   color: white;
 }
 
@@ -673,9 +866,9 @@ textarea {
 }
 
 .combo-draft span {
-  background: #eef6ff;
+  background: var(--brand-soft);
   border-radius: 999px;
-  color: #0b3b78;
+  color: var(--brand-strong);
   font-size: 12px;
   font-weight: 900;
   padding: 5px 9px;
@@ -709,7 +902,7 @@ textarea {
 }
 
 .bet-type-switch button.active {
-  background: #0b3b78;
+  background: var(--brand-strong);
   color: white;
 }
 
@@ -726,8 +919,8 @@ textarea {
 }
 
 .runner-row.is-selected {
-  border-color: #0b55a0;
-  box-shadow: 0 0 0 2px rgba(11, 85, 160, 0.16);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px var(--brand-ring);
 }
 
 .runner-row-main {
@@ -741,7 +934,7 @@ textarea {
 .runner-rail {
   align-items: center;
   border-right: 1px solid var(--line);
-  color: #0b3b78;
+  color: var(--brand-strong);
   display: grid;
   grid-template-columns: 20px 34px 32px;
   justify-items: center;
@@ -800,7 +993,7 @@ textarea {
 }
 
 .runner-core > strong {
-  color: #0b315f;
+  color: var(--brand-ink);
   font-size: 24px;
   line-height: 1.05;
   overflow-wrap: anywhere;
@@ -853,7 +1046,7 @@ textarea {
 }
 
 .runner-odds-grid > button.active {
-  background: #0b3b78;
+  background: var(--brand-strong);
   color: white;
 }
 
@@ -876,7 +1069,7 @@ textarea {
   align-self: center;
   background: transparent;
   border: 0;
-  color: #0b3b78;
+  color: var(--brand-strong);
   cursor: pointer;
   font-size: 20px;
   font-weight: 900;
@@ -885,7 +1078,7 @@ textarea {
 
 .runner-select-dot {
   align-self: center;
-  background: #0b55a0;
+  background: var(--brand-primary);
   border-radius: 999px;
   display: none;
   height: 10px;
@@ -897,7 +1090,7 @@ textarea {
 }
 
 .runner-detail-card {
-  background: linear-gradient(110deg, #f7fbff, #ffffff);
+  background: linear-gradient(110deg, var(--brand-soft), #ffffff);
   border-top: 1px solid var(--line);
   display: grid;
   gap: 12px;
@@ -928,7 +1121,7 @@ textarea {
 .race-app-hero {
   align-items: end;
   background:
-    linear-gradient(90deg, rgba(2, 31, 68, 0.82), rgba(0, 75, 124, 0.56)),
+    linear-gradient(90deg, var(--brand-hero-start), var(--brand-hero-end)),
     url("/images/race-hero.webp") center / cover no-repeat;
   color: white;
   display: flex;
@@ -992,7 +1185,7 @@ textarea {
 }
 
 .race-notice-strip a {
-  background: #0b3b78;
+  background: var(--brand-strong);
   border-radius: 6px;
   color: white;
   font-weight: 900;
@@ -1237,7 +1430,7 @@ textarea {
 
 .basket-remove-button {
   align-items: center;
-  background: #0b3b78;
+  background: var(--brand-strong);
   border: 0;
   border-radius: 999px;
   color: white;
@@ -1353,8 +1546,8 @@ textarea {
 }
 
 .quick-stakes button:hover {
-  border-color: var(--green);
-  color: var(--green-dark);
+  border-color: var(--brand-primary);
+  color: var(--brand-strong);
 }
 
 .bet-slip-submit {
@@ -1376,7 +1569,7 @@ textarea {
   width: 54%;
   height: 15px;
   border-radius: 999px;
-  background: var(--blue);
+  background: var(--brand-primary);
 }
 
 .horse-icon::after {
@@ -1387,7 +1580,7 @@ textarea {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--brand-strong);
 }
 
 .row-actions {
@@ -1399,7 +1592,7 @@ textarea {
 .source-link {
   border: 1px solid var(--line);
   border-radius: 6px;
-  color: var(--blue);
+  color: var(--brand-link);
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 700;
@@ -1407,7 +1600,7 @@ textarea {
 }
 
 .source-link:hover {
-  border-color: var(--blue);
+  border-color: var(--brand-link);
 }
 
 .racecard-meta {
@@ -1568,14 +1761,6 @@ textarea {
     padding: 10px 0;
   }
 
-  .page:has(.auth-shell) .topbar {
-    display: none;
-  }
-
-  .page:has(.auth-shell) .main {
-    padding-top: 0;
-  }
-
   .brand {
     line-height: 1.2;
   }
@@ -1612,27 +1797,12 @@ textarea {
     width: 100%;
   }
 
-  .auth-alt-link {
-    display: block;
-  }
-
   .auth-shell {
-    background:
-      linear-gradient(180deg, rgba(2, 16, 34, 0.2), rgba(2, 16, 34, 0.78)),
-      url("/images/race-hero.webp") center / cover no-repeat;
+    gap: 0;
+    grid-template-columns: 1fr;
     margin-left: -10px;
     margin-right: -10px;
-    min-height: 100vh;
-    overflow: hidden;
     padding: 160px 14px calc(22px + env(safe-area-inset-bottom, 0));
-    position: relative;
-  }
-
-  .auth-shell::before {
-    background: rgba(11, 49, 95, 0.58);
-    content: "";
-    inset: 0;
-    position: absolute;
   }
 
   .auth-hero {
@@ -1642,85 +1812,25 @@ textarea {
   .auth-panel {
     align-content: end;
     align-self: end;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.54);
     border-radius: 14px;
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-    gap: 12px;
-    min-height: 0;
     padding: 20px 16px 16px;
-    position: relative;
-    z-index: 1;
   }
 
   .auth-panel::before {
-    background: #0b3b78;
-    border-radius: 999px;
-    content: "";
-    height: 5px;
-    justify-self: center;
     margin-bottom: 2px;
     width: 44px;
   }
 
   .auth-kicker {
-    color: #0b3b78;
-    font-size: 22px;
-    line-height: 1;
+    font-size: 25px;
   }
 
   .auth-panel .section-title {
-    color: #111827;
     font-size: 25px;
-    margin: 0;
-  }
-
-  .auth-panel .form {
-    gap: 12px;
-  }
-
-  .auth-panel .field label {
-    color: #0b315f;
-    font-size: 12px;
-    font-weight: 900;
-    text-transform: uppercase;
-  }
-
-  .auth-panel .input {
-    background: #f7fbff;
-    border-color: rgba(11, 49, 95, 0.2);
-    border-radius: 10px;
-    color: #0b315f;
-    min-height: 48px;
   }
 
   .auth-panel .button {
-    background: #ffc400;
-    border: 0;
-    border-radius: 999px;
-    color: #0b315f;
-    font-size: 18px;
-    font-weight: 900;
     min-height: 50px;
-  }
-
-  .auth-panel .button:hover {
-    background: #ffd23a;
-  }
-
-  .auth-panel .muted {
-    color: #4b5563;
-    font-size: 13px;
-  }
-
-  .auth-panel .auth-alt-link a {
-    color: #0b3b78;
-  }
-
-  .auth-panel .message {
-    background: #fff8d8;
-    border-color: rgba(255, 196, 0, 0.55);
-    border-radius: 10px;
   }
 
   .admin-mobile-shell .main {

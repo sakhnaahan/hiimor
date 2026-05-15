@@ -17,9 +17,10 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
+CRON_SECRET="replace-with-a-long-random-string"
 ```
 
-3. Push the Prisma schema and seed the first admin:
+3. Apply the Prisma migrations and seed the first admin:
 
 ```powershell
 npm.cmd run db:setup
@@ -42,7 +43,7 @@ npm.cmd run build
 npm.cmd run db:setup
 ```
 
-`db:setup` is the supported local database setup command for this project. It pushes the Prisma schema, ensures app settings exist, and seeds the first admin from environment variables.
+`db:setup` is the supported local database setup command for this project. It applies the committed Prisma migrations, ensures app settings exist, and seeds the first admin from environment variables.
 
 ## Vercel
 
@@ -53,9 +54,11 @@ DATABASE_URL="postgresql://..."
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
+CRON_SECRET="replace-with-a-long-random-string"
 ```
 
-The Vercel build runs `prisma db push` before `next build`, so the hosted PostgreSQL schema is kept in sync on deployment.
+The Vercel build runs `prisma migrate deploy` before `next build`, so the hosted PostgreSQL schema is updated from the committed migration history on deployment.
+Vercel Cron is configured in `vercel.json` to call `/api/cron/hkjc-sync` every 2 minutes. Set `CRON_SECRET` in the deployment environment so the cron route can authenticate.
 
 ## Admin Flow
 

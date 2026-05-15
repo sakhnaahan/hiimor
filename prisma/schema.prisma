@@ -103,3 +103,68 @@ model AdminAuditLog {
 
   @@map("admin_audit_logs")
 }
+
+model HkjcMeetingSnapshot {
+  id             Int                @id @default(autoincrement())
+  raceDate       String             @map("race_date")
+  racecourseCode String             @map("racecourse_code")
+  racecourseName String             @map("racecourse_name")
+  meetingDate    String             @default("") @map("meeting_date")
+  status         String
+  raceCount      Int                @default(0) @map("race_count")
+  currentRaceNo  Int?               @map("current_race_no")
+  lastSyncedAt   DateTime           @default(now()) @map("last_synced_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  races          HkjcRaceSnapshot[]
+
+  @@unique([raceDate, racecourseCode])
+  @@map("hkjc_meeting_snapshots")
+}
+
+model HkjcRaceSnapshot {
+  id                 Int                 @id @default(autoincrement())
+  meetingSnapshotId  Int                 @map("meeting_snapshot_id")
+  raceDate           String              @map("race_date")
+  racecourseCode     String              @map("racecourse_code")
+  raceNo             Int                 @map("race_no")
+  sourceUrl          String              @map("source_url")
+  raceName           String              @map("race_name")
+  meetingDate        String              @default("") @map("meeting_date")
+  racecourseName     String              @map("racecourse_name")
+  startTime          String              @default("") @map("start_time")
+  surface            String              @default("")
+  course             String              @default("")
+  distance           String              @default("")
+  going              String              @default("")
+  prizeMoney         String              @default("") @map("prize_money")
+  raceClass          String              @default("") @map("race_class")
+  status             String
+  oddsAvailable      Boolean             @default(false) @map("odds_available")
+  oddsLastUpdateTime String              @default("") @map("odds_last_update_time")
+  runnersJson        Json                @map("runners_json")
+  resultJson         Json?               @map("result_json")
+  lastSyncedAt       DateTime            @default(now()) @map("last_synced_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  meeting            HkjcMeetingSnapshot @relation(fields: [meetingSnapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([raceDate, racecourseCode, raceNo])
+  @@index([status])
+  @@map("hkjc_race_snapshots")
+}
+
+model HkjcSyncRun {
+  id               Int       @id @default(autoincrement())
+  status           String
+  startedAt        DateTime  @default(now()) @map("started_at")
+  finishedAt       DateTime? @map("finished_at")
+  meetingsScanned  Int       @default(0) @map("meetings_scanned")
+  racesUpserted    Int       @default(0) @map("races_upserted")
+  oddsRefreshed    Int       @default(0) @map("odds_refreshed")
+  resultsFinalized Int       @default(0) @map("results_finalized")
+  betsSettled      Int       @default(0) @map("bets_settled")
+  failureMessage   String?   @map("failure_message")
+
+  @@map("hkjc_sync_runs")
+}

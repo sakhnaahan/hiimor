@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/hkjc-sync",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}

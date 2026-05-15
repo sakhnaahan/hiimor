@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getHkjcRaceResult } from "@/lib/hkjc-results";
+import { readStoredHkjcRaceResult } from "@/lib/hkjc-snapshots";
 import { isPlaceWinningPosition } from "@/lib/race-betting-ui";
 
 type SettlementOptions = {
@@ -75,13 +76,20 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
 
     const cacheKey = `${race.hkjcRaceDate}|${race.hkjcRacecourseCode}|${race.hkjcRaceNo}`;
     if (!resultCache.has(cacheKey)) {
+      const storedResult = await readStoredHkjcRaceResult({
+        raceDate: race.hkjcRaceDate!,
+        racecourseCode: race.hkjcRacecourseCode!,
+        raceNo: race.hkjcRaceNo!,
+      }).catch(() => null);
+
       resultCache.set(
         cacheKey,
-        await getHkjcRaceResult({
-          raceDate: race.hkjcRaceDate!,
-          racecourseCode: race.hkjcRacecourseCode!,
-          raceNo: race.hkjcRaceNo!,
-        }).catch(() => null),
+        storedResult ??
+          (await getHkjcRaceResult({
+            raceDate: race.hkjcRaceDate!,
+            racecourseCode: race.hkjcRacecourseCode!,
+            raceNo: race.hkjcRaceNo!,
+          }).catch(() => null)),
       );
     }
 

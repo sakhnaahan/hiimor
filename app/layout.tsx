@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { logoutAction } from "@/app/actions";
 import { AdminMobileMenu } from "@/components/admin-mobile-menu";
 import { LanguageSwitch } from "@/components/language-switch";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -44,11 +43,6 @@ export default async function RootLayout({
                     <Link href="/history">{t.navHistory}</Link>
                     <Link href="/account">{t.navAccount}</Link>
                     {user.role === "admin" ? <Link href="/admin">{t.navAdmin}</Link> : null}
-                    <form action={logoutAction}>
-                      <button className="link-button" type="submit">
-                        {t.logout}
-                      </button>
-                    </form>
                   </>
                 ) : (
                   <>
