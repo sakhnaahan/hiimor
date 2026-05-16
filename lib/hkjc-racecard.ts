@@ -487,12 +487,7 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
     normalizeText(meeting.country?.[0]?.nameen ?? "") ||
     meeting.venueCode;
   const raceOptions = (meeting.races ?? [])
-    .filter(
-      (option) =>
-        Number.isInteger(Number(option.no)) &&
-        !["RESULT", "CLOSED"].includes(String(option.status ?? "").toUpperCase()) &&
-        (option.runners?.length ?? 0) > 0,
-    )
+    .filter((option) => Number.isInteger(Number(option.no)))
     .map((option) => ({
       raceNo: Number(option.no),
       raceDate: meeting.date,

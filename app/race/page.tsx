@@ -69,7 +69,7 @@ export default async function RacePage({
               raceCard={hkjcRaceCard.raceCard}
               raceDetails={raceDetails}
             />
-            {hkjcRaceCard.raceCard.raceOptions.length > 1 ? (
+            {hkjcRaceCard.raceCard.raceOptions.length > 0 ? (
               <div className="race-tabs">
                 {hkjcRaceCard.raceCard.raceOptions.map((race) => (
                   <Link

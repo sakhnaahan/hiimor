@@ -113,28 +113,47 @@ async function populateRaceOptions(raceCard: HkjcRaceCard) {
     return raceCard;
   }
 
-  const raceOptions = await snapshotPrisma.hkjcRaceSnapshot.findMany({
-    where: {
-      raceDate: raceCard.raceDate,
-      racecourseCode: raceCard.racecourseCode,
-      status: { in: [...HKJC_ACTIVE_SNAPSHOT_STATUSES, ...HKJC_FINAL_SNAPSHOT_STATUSES] },
-    },
-    orderBy: { raceNo: "asc" },
-    select: {
-      raceNo: true,
-      raceDate: true,
-      racecourseCode: true,
-    },
-  });
+  const [meeting, raceOptions] = await Promise.all([
+    snapshotPrisma.hkjcMeetingSnapshot.findUnique({
+      where: {
+        raceDate_racecourseCode: {
+          raceDate: raceCard.raceDate,
+          racecourseCode: raceCard.racecourseCode,
+        },
+      },
+      select: { raceCount: true },
+    }),
+    snapshotPrisma.hkjcRaceSnapshot.findMany({
+      where: {
+        raceDate: raceCard.raceDate,
+        racecourseCode: raceCard.racecourseCode,
+        status: { in: [...HKJC_ACTIVE_SNAPSHOT_STATUSES, ...HKJC_FINAL_SNAPSHOT_STATUSES] },
+      },
+      orderBy: { raceNo: "asc" },
+      select: {
+        raceNo: true,
+        raceDate: true,
+        racecourseCode: true,
+      },
+    }),
+  ]);
+
+  const raceCount = Math.max(meeting?.raceCount ?? 0, ...raceOptions.map((option) => option.raceNo), raceCard.raceNo);
 
   raceCard.raceOptions =
-    raceOptions.length > 0
-      ? raceOptions.map((option) => ({
-          raceNo: option.raceNo,
-          raceDate: option.raceDate,
-          racecourseCode: option.racecourseCode,
+    raceCount > raceOptions.length
+      ? Array.from({ length: raceCount }, (_, index) => ({
+          raceNo: index + 1,
+          raceDate: raceCard.raceDate,
+          racecourseCode: raceCard.racecourseCode,
         }))
-      : [{ raceNo: raceCard.raceNo, raceDate: raceCard.raceDate, racecourseCode: raceCard.racecourseCode }];
+      : raceOptions.length > 0
+        ? raceOptions.map((option) => ({
+            raceNo: option.raceNo,
+            raceDate: option.raceDate,
+            racecourseCode: option.racecourseCode,
+          }))
+        : [{ raceNo: raceCard.raceNo, raceDate: raceCard.raceDate, racecourseCode: raceCard.racecourseCode }];
 
   return raceCard;
 }
