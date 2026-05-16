@@ -2,8 +2,8 @@ import Link from "next/link";
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureBootstrapData } from "@/lib/bootstrap";
-import { RaceForm } from "@/components/race-form";
 import { RaceAutoRefresh } from "@/components/race-auto-refresh";
+import { RaceBettingShell } from "@/components/race-betting-shell";
 import { RaceSummaryHeader } from "@/components/race-summary-header";
 import { getHkjcUpcomingRaceCard } from "@/lib/hkjc-racecard";
 import { settlePendingHkjcBets } from "@/lib/hkjc-settlement";
@@ -62,14 +62,46 @@ export default async function RacePage({
       <section className="panel race-panel">
         {hkjcRaceCard.ok ? (
           <>
-            <RaceSummaryHeader
-              language={language}
-              liveStreamUrl={HONG_KONG_LIVE_STREAM_URL}
-              pendingRaceCount={pendingRaceCount}
-              raceCard={hkjcRaceCard.raceCard}
-              raceDetails={raceDetails}
-            />
-            {hkjcRaceCard.raceCard.raceOptions.length > 0 ? (
+            {isAdmin ? (
+              <RaceSummaryHeader
+                language={language}
+                liveStreamUrl={HONG_KONG_LIVE_STREAM_URL}
+                mobileBetMenuOpen={false}
+                mobileBetMode="win-place"
+                onCloseBetMenu={() => {}}
+                onOpenBetMenu={() => {}}
+                onSelectBetMode={() => {}}
+                pendingRaceCount={pendingRaceCount}
+                raceCard={hkjcRaceCard.raceCard}
+                raceDetails={raceDetails}
+              />
+            ) : (
+              <RaceBettingShell
+                balance={freshUser!.coinBalance}
+                language={language}
+                liveStreamUrl={HONG_KONG_LIVE_STREAM_URL}
+                pendingRaceCount={pendingRaceCount}
+                raceCard={hkjcRaceCard.raceCard}
+                raceDetails={raceDetails}
+              >
+                {hkjcRaceCard.raceCard.raceOptions.length > 0 ? (
+                  <div className="race-tabs">
+                    {hkjcRaceCard.raceCard.raceOptions.map((race) => (
+                      <Link
+                        className={`race-tab ${race.raceNo === hkjcRaceCard.raceCard.raceNo ? "active" : ""}`}
+                        href={`/race?raceDate=${encodeURIComponent(race.raceDate)}&racecourse=${encodeURIComponent(
+                          race.racecourseCode,
+                        )}&raceNo=${race.raceNo}`}
+                        key={race.raceNo}
+                      >
+                        {race.raceNo}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </RaceBettingShell>
+            )}
+            {isAdmin && hkjcRaceCard.raceCard.raceOptions.length > 0 ? (
               <div className="race-tabs">
                 {hkjcRaceCard.raceCard.raceOptions.map((race) => (
                   <Link
@@ -84,11 +116,7 @@ export default async function RacePage({
                 ))}
               </div>
             ) : null}
-            {isAdmin ? (
-              <div className="message">{t.adminRaceViewOnly}</div>
-            ) : (
-              <RaceForm balance={freshUser!.coinBalance} raceCard={hkjcRaceCard.raceCard} language={language} />
-            )}
+            {isAdmin ? <div className="message">{t.adminRaceViewOnly}</div> : null}
           </>
         ) : (
           <>

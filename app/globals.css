@@ -894,6 +894,10 @@ textarea {
   padding: 4px 9px;
 }
 
+.quinella-mode-note {
+  margin: 0;
+}
+
 .bet-type-switch {
   background: white;
   border: 1px solid var(--line);
@@ -1128,7 +1132,7 @@ textarea {
 
 .race-summary-wrap {
   display: grid;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .race-app-hero {
@@ -1218,6 +1222,8 @@ textarea {
   grid-template-columns: minmax(0, 1fr) 230px;
   gap: 18px;
   align-items: center;
+  position: relative;
+  z-index: 5;
 }
 
 .race-compact-header p {
@@ -1250,6 +1256,76 @@ textarea {
 .race-mobile-details,
 .race-mobile-wager {
   display: none;
+}
+
+.race-mobile-wager {
+  position: relative;
+  z-index: 46;
+}
+
+.race-mobile-wager-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #0b315f;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 12px;
+  padding: 0;
+}
+
+.race-mobile-wager-button strong {
+  font-size: 19px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.race-mobile-wager-button span {
+  align-items: center;
+  background: #ffc400;
+  border-radius: 6px;
+  color: #0b3b78;
+  display: inline-flex;
+  font-size: 16px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  line-height: 1;
+  width: 34px;
+}
+
+.race-mobile-wager-menu {
+  background: white;
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  display: grid;
+  min-width: 220px;
+  max-width: calc(100vw - 20px);
+  overflow: hidden;
+  position: fixed;
+  z-index: 60;
+}
+
+.race-mobile-wager-menu button {
+  background: white;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  color: #0b315f;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  min-height: 48px;
+  padding: 0 16px;
+  text-align: left;
+}
+
+.race-mobile-wager-menu button:last-child {
+  border-bottom: 0;
+}
+
+.race-mobile-wager-menu button.active {
+  background: #eef4fb;
 }
 
 .race-title {
@@ -2187,31 +2263,12 @@ textarea {
   }
 
   .race-mobile-wager {
-    align-items: center;
-    color: #0b315f;
     display: flex;
-    gap: 12px;
     padding-left: 14px;
   }
 
-  .race-mobile-wager strong {
-    font-size: 19px;
-    line-height: 1.1;
-    white-space: nowrap;
-  }
-
-  .race-mobile-wager span {
-    align-items: center;
-    background: #ffc400;
-    border-radius: 6px;
-    color: #0b3b78;
-    display: inline-flex;
-    font-size: 22px;
-    font-weight: 900;
-    height: 34px;
-    justify-content: center;
-    line-height: 1;
-    width: 34px;
+  .race-mobile-wager-button span {
+    font-size: 18px;
   }
 
   .race-live-link {
@@ -2265,13 +2322,18 @@ textarea {
 
   .combo-mode-bar {
     border: 0;
-    border-radius: 4px;
+    border-radius: 0;
+    display: none;
     gap: 6px;
-    padding: 8px;
+    padding: 0;
   }
 
-  .combo-mode-switch button {
-    min-height: 34px;
+  .combo-mode-bar.is-combo-active {
+    display: grid;
+  }
+
+  .combo-mode-switch {
+    display: none;
   }
 
   .bet-type-switch {

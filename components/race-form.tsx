@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { runRaceBasketAction } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import { formatCoins } from "@/lib/format";
@@ -14,10 +14,12 @@ import {
   getBetLineCount,
   getBetLineTypes,
   getComboPendingDecision,
+  getMobileBetModeTransition,
   getSingleBetTapDecision,
   getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
   parseStakeInput,
+  type MobileBetMode,
   type RaceBetType,
 } from "@/lib/race-betting-ui";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
@@ -114,10 +116,14 @@ export function RaceForm({
   balance,
   raceCard,
   language,
+  mobileBetMode,
+  onSelectBetMode,
 }: {
   balance: number;
   raceCard: HkjcRaceCard;
   language: Language;
+  mobileBetMode: MobileBetMode;
+  onSelectBetMode: (mode: MobileBetMode) => void;
 }) {
   const t = getTranslations(language);
   const [expandedHorseNo, setExpandedHorseNo] = useState<string | null>(null);
@@ -127,15 +133,18 @@ export function RaceForm({
   const [pendingBet, setPendingBet] = useState<PendingBetSelection | null>(
     null,
   );
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>("single");
   const [comboWinHorseNo, setComboWinHorseNo] = useState<string | null>(null);
   const [comboPlaceHorseNo, setComboPlaceHorseNo] = useState<string | null>(
     null,
   );
+  const previousMobileBetModeRef = useRef(mobileBetMode);
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
   const basketTotals = getBasketTotals(basketItems);
   const router = useRouter();
   const visibleBetSlipItems = basketItems;
+  const selectionMode: SelectionMode =
+    mobileBetMode === "combo-wp" ? "combo" : "single";
+  const quinellaMode = mobileBetMode === "quinella";
   const basketPayload = useMemo(
     () =>
       JSON.stringify(
@@ -227,6 +236,31 @@ export function RaceForm({
       window.removeEventListener("open-betslip", openBetSlip);
     };
   }, []);
+
+  useEffect(() => {
+    const previousMobileBetMode = previousMobileBetModeRef.current;
+    const transition = getMobileBetModeTransition(
+      previousMobileBetMode,
+      mobileBetMode,
+    );
+
+    if (transition.clearComboDraft) {
+      setComboWinHorseNo(null);
+      setComboPlaceHorseNo(null);
+    }
+
+    if (transition.clearPendingBet === "all") {
+      setPendingBet(null);
+    } else if (transition.clearPendingBet === "combo-only") {
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "WIN_PLACE_COMBO"
+          ? null
+          : currentPendingBet,
+      );
+    }
+
+    previousMobileBetModeRef.current = mobileBetMode;
+  }, [mobileBetMode]);
 
   function openBetSlipPanel() {
     setBetSlipOpen(true);
@@ -429,21 +463,23 @@ export function RaceForm({
 
           <div className="race-betting-layout" id="race-info">
             <div className="runner-list">
-              <div className="combo-mode-bar">
+              <div
+                className={`combo-mode-bar ${selectionMode === "combo" ? "is-combo-active" : ""}`}
+              >
                 <div className="combo-mode-switch" aria-label="Bet mode">
                   <button
                     className={selectionMode === "single" ? "active" : ""}
-                    onClick={() => setSelectionMode("single")}
+                    onClick={() => onSelectBetMode("win-place")}
                     type="button"
                   >
-                    Single
+                    {t.winPlace}
                   </button>
                   <button
                     className={selectionMode === "combo" ? "active" : ""}
-                    onClick={() => setSelectionMode("combo")}
+                    onClick={() => onSelectBetMode("combo-wp")}
                     type="button"
                   >
-                    Combo W+P
+                    {t.comboWp}
                   </button>
                 </div>
                 {selectionMode === "combo" ? (
@@ -463,6 +499,11 @@ export function RaceForm({
                   </div>
                 ) : null}
               </div>
+              {quinellaMode ? (
+                <p className="message quinella-mode-note">
+                  {t.quinellaComingSoon}
+                </p>
+              ) : null}
               {raceCard.runners.map((runner) => {
                 const expanded = expandedHorseNo === runner.horseNo;
                 const selected = [
@@ -572,7 +613,7 @@ export function RaceForm({
                               ? "active"
                               : ""
                           }
-                          disabled={winDisabled}
+                          disabled={quinellaMode || winDisabled}
                           onClick={() =>
                             selectionMode === "combo"
                               ? selectComboWin(runner)
@@ -600,7 +641,7 @@ export function RaceForm({
                               ? "active"
                               : ""
                           }
-                          disabled={placeDisabled}
+                          disabled={quinellaMode || placeDisabled}
                           onClick={() =>
                             selectionMode === "combo"
                               ? selectComboPlace(runner)
@@ -617,7 +658,9 @@ export function RaceForm({
                           aria-pressed={winPlaceSelected}
                           className={winPlaceSelected ? "active" : ""}
                           disabled={
-                            selectionMode === "combo" || winPlaceDisabled
+                            quinellaMode ||
+                            selectionMode === "combo" ||
+                            winPlaceDisabled
                           }
                           onClick={() => addBasketItem(runner, "WIN_PLACE")}
                           type="button"

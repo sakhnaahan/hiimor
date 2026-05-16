@@ -49,6 +49,10 @@ export const translations = {
     liveOdds: "Live",
     jockey: "Jockey",
     draw: "Draw",
+    winPlace: "Win/Place",
+    comboWp: "Combo W+P",
+    quinella: "Quinella",
+    quinellaComingSoon: "Quinella betting is coming soon.",
     gear: "Gear",
     last6: "Last 6",
     horseWeight: "Horse Wt.",
@@ -156,6 +160,9 @@ export const translations = {
     trainer: "Trainer",
     weight: "Wt.",
     no: "No.",
+    /*
+    quinellaComingSoon: "Quinella Ð±Ð¾Ð¾Ñ†Ð¾Ð¾ ÑƒÐ´Ð°Ñ…Ð³Ò¯Ð¹ Ð½ÑÐ¼ÑÐ³Ð´ÑÐ½Ñ.",
+    */
     tbc: "TBC",
   },
   mn: {
@@ -312,6 +319,10 @@ export const translations = {
     weight: "Жин",
     no: "No.",
     tbc: "Тодорхойгүй",
+    winPlace: "Win/Place",
+    comboWp: "Combo W+P",
+    quinella: "Quinella",
+    quinellaComingSoon: "Quinella Ð±Ð¾Ð¾Ñ†Ð¾Ð¾ ÑƒÐ´Ð°Ñ…Ð³Ò¯Ð¹ Ð½ÑÐ¼ÑÐ³Ð´ÑÐ½Ñ.",
   },
 } as const;
 

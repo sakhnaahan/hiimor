@@ -11,6 +11,7 @@ import {
   getBetLineCount,
   getBetLineTypes,
   getComboPendingDecision,
+  getMobileBetModeTransition,
   getPlaceDividendCount,
   getQuickStakeValue,
   getRunnerLockedPlaceOdds,
@@ -115,6 +116,25 @@ test("combo pending decision clears stale combo sheets and keeps non-combo pendi
   assert.equal(getComboPendingDecision("WIN_PLACE_COMBO", "1", null), "clear-pending");
   assert.equal(getComboPendingDecision("WIN_PLACE_COMBO", "1", "2"), "set-pending");
   assert.equal(getComboPendingDecision("WIN", "1", null), "keep-pending");
+});
+
+test("mobile bet mode transition clears combo draft and pending state only when required", () => {
+  assert.deepEqual(getMobileBetModeTransition("win-place", "combo-wp"), {
+    clearComboDraft: false,
+    clearPendingBet: "all",
+  });
+  assert.deepEqual(getMobileBetModeTransition("combo-wp", "win-place"), {
+    clearComboDraft: true,
+    clearPendingBet: "combo-only",
+  });
+  assert.deepEqual(getMobileBetModeTransition("win-place", "quinella"), {
+    clearComboDraft: true,
+    clearPendingBet: "all",
+  });
+  assert.deepEqual(getMobileBetModeTransition("win-place", "win-place"), {
+    clearComboDraft: false,
+    clearPendingBet: "none",
+  });
 });
 
 test("potential payout uses app multiplier and floors whole coins", () => {

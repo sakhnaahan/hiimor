@@ -7,6 +7,8 @@ export type RaceBetType = "WIN" | "PLACE" | "WIN_PLACE" | "WIN_PLACE_COMBO";
 export type RaceBetLineType = "WIN" | "PLACE";
 export type SingleBetTapDecision = "clear-pending" | "ignore-basket-item" | "set-pending";
 export type ComboPendingDecision = "clear-pending" | "keep-pending" | "set-pending";
+export type MobileBetMode = "win-place" | "combo-wp" | "quinella";
+export type PendingBetClearMode = "none" | "combo-only" | "all";
 
 export type RaceBasketTotalItem = {
   betType: RaceBetType;
@@ -183,6 +185,47 @@ export function getComboPendingDecision(
   return pendingBetType === "WIN_PLACE_COMBO"
     ? "clear-pending"
     : "keep-pending";
+}
+
+export function getMobileBetModeTransition(
+  previousMode: MobileBetMode,
+  nextMode: MobileBetMode,
+): {
+  clearComboDraft: boolean;
+  clearPendingBet: PendingBetClearMode;
+} {
+  if (previousMode === nextMode) {
+    return {
+      clearComboDraft: false,
+      clearPendingBet: "none",
+    };
+  }
+
+  if (nextMode === "quinella") {
+    return {
+      clearComboDraft: true,
+      clearPendingBet: "all",
+    };
+  }
+
+  if (nextMode === "combo-wp" && previousMode !== "combo-wp") {
+    return {
+      clearComboDraft: false,
+      clearPendingBet: "all",
+    };
+  }
+
+  if (previousMode === "combo-wp" && nextMode !== "combo-wp") {
+    return {
+      clearComboDraft: true,
+      clearPendingBet: "combo-only",
+    };
+  }
+
+  return {
+    clearComboDraft: false,
+    clearPendingBet: "none",
+  };
 }
 
 export function validateLockedOddsQuote({
