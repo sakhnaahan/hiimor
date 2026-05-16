@@ -5,6 +5,8 @@ import { MIN_BET_AMOUNT } from "@/lib/rules";
 export type QuickStakeAction = "max" | "clear";
 export type RaceBetType = "WIN" | "PLACE" | "WIN_PLACE" | "WIN_PLACE_COMBO";
 export type RaceBetLineType = "WIN" | "PLACE";
+export type SingleBetTapDecision = "clear-pending" | "ignore-basket-item" | "set-pending";
+export type ComboPendingDecision = "clear-pending" | "keep-pending" | "set-pending";
 
 export type RaceBasketTotalItem = {
   betType: RaceBetType;
@@ -147,6 +149,40 @@ export function getBasketTotals(items: readonly RaceBasketTotalItem[]) {
     },
     { itemCount: 0, lineCount: 0, totalStake: 0, invalidStakeCount: 0 },
   );
+}
+
+export function getSingleBetTapDecision(
+  pendingBetId: string | null | undefined,
+  basketItemIds: readonly string[],
+  tappedId: string,
+): SingleBetTapDecision {
+  if (pendingBetId === tappedId) {
+    return "clear-pending";
+  }
+
+  if (basketItemIds.includes(tappedId)) {
+    return "ignore-basket-item";
+  }
+
+  return "set-pending";
+}
+
+export function getComboPendingDecision(
+  pendingBetType: RaceBetType | null | undefined,
+  nextWinHorseNo: string | null,
+  nextPlaceHorseNo: string | null,
+): ComboPendingDecision {
+  if (
+    nextWinHorseNo &&
+    nextPlaceHorseNo &&
+    nextWinHorseNo !== nextPlaceHorseNo
+  ) {
+    return "set-pending";
+  }
+
+  return pendingBetType === "WIN_PLACE_COMBO"
+    ? "clear-pending"
+    : "keep-pending";
 }
 
 export function validateLockedOddsQuote({

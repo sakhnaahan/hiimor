@@ -13,6 +13,8 @@ import {
   getBasketTotals,
   getBetLineCount,
   getBetLineTypes,
+  getComboPendingDecision,
+  getSingleBetTapDecision,
   getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
   parseStakeInput,
@@ -276,9 +278,18 @@ export function RaceForm({
 
   function addBasketItem(runner: HkjcRunner, betType: RaceBetType) {
     const id = getBasketItemId(runner.horseNo, betType);
-    if (basketItems.some((item) => item.id === id)) {
-      setBasketItems((items) => items.filter((item) => item.id !== id));
+    const tapDecision = getSingleBetTapDecision(
+      pendingBet?.id,
+      basketItems.map((item) => item.id),
+      id,
+    );
+
+    if (tapDecision === "clear-pending") {
       setPendingBet(null);
+      return;
+    }
+
+    if (tapDecision === "ignore-basket-item") {
       return;
     }
 
@@ -294,8 +305,37 @@ export function RaceForm({
     });
   }
 
-  function addComboBasketItem(winRunner: HkjcRunner, placeRunner: HkjcRunner) {
-    if (winRunner.horseNo === placeRunner.horseNo) {
+  function syncComboPendingBet(
+    nextWinHorseNo: string | null,
+    nextPlaceHorseNo: string | null,
+  ) {
+    const pendingDecision = getComboPendingDecision(
+      pendingBet?.betType,
+      nextWinHorseNo,
+      nextPlaceHorseNo,
+    );
+
+    if (pendingDecision === "clear-pending") {
+      setPendingBet(null);
+      return;
+    }
+
+    if (pendingDecision === "keep-pending") {
+      return;
+    }
+
+    const winRunner = nextWinHorseNo
+      ? getRunnerByHorseNo(raceCard.runners, nextWinHorseNo)
+      : null;
+    const placeRunner = nextPlaceHorseNo
+      ? getRunnerByHorseNo(raceCard.runners, nextPlaceHorseNo)
+      : null;
+    if (!winRunner || !placeRunner || winRunner.horseNo === placeRunner.horseNo) {
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "WIN_PLACE_COMBO"
+          ? null
+          : currentPendingBet,
+      );
       return;
     }
 
@@ -304,12 +344,6 @@ export function RaceForm({
       "WIN_PLACE_COMBO",
       placeRunner.horseNo,
     );
-    if (basketItems.some((item) => item.id === id)) {
-      setBasketItems((items) => items.filter((item) => item.id !== id));
-      setPendingBet(null);
-      return;
-    }
-
     setPendingBet({
       id,
       horseNo: winRunner.horseNo,
@@ -327,29 +361,19 @@ export function RaceForm({
   function selectComboWin(runner: HkjcRunner) {
     const nextPlaceHorseNo =
       comboPlaceHorseNo === runner.horseNo ? null : comboPlaceHorseNo;
-    setComboWinHorseNo(runner.horseNo);
+    const nextWinHorseNo = runner.horseNo;
+    setComboWinHorseNo(nextWinHorseNo);
     setComboPlaceHorseNo(nextPlaceHorseNo);
-
-    const placeRunner = nextPlaceHorseNo
-      ? getRunnerByHorseNo(raceCard.runners, nextPlaceHorseNo)
-      : null;
-    if (placeRunner) {
-      addComboBasketItem(runner, placeRunner);
-    }
+    syncComboPendingBet(nextWinHorseNo, nextPlaceHorseNo);
   }
 
   function selectComboPlace(runner: HkjcRunner) {
     const nextWinHorseNo =
       comboWinHorseNo === runner.horseNo ? null : comboWinHorseNo;
+    const nextPlaceHorseNo = runner.horseNo;
     setComboWinHorseNo(nextWinHorseNo);
-    setComboPlaceHorseNo(runner.horseNo);
-
-    const winRunner = nextWinHorseNo
-      ? getRunnerByHorseNo(raceCard.runners, nextWinHorseNo)
-      : null;
-    if (winRunner) {
-      addComboBasketItem(winRunner, runner);
-    }
+    setComboPlaceHorseNo(nextPlaceHorseNo);
+    syncComboPendingBet(nextWinHorseNo, nextPlaceHorseNo);
   }
 
   function removeBasketItem(id: string) {
@@ -430,6 +454,7 @@ export function RaceForm({
                       onClick={() => {
                         setComboWinHorseNo(null);
                         setComboPlaceHorseNo(null);
+                        syncComboPendingBet(null, null);
                       }}
                       type="button"
                     >

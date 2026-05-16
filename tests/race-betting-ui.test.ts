@@ -10,10 +10,12 @@ import {
   getBasketTotals,
   getBetLineCount,
   getBetLineTypes,
+  getComboPendingDecision,
   getPlaceDividendCount,
   getQuickStakeValue,
   getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
+  getSingleBetTapDecision,
   isPlaceWinningPosition,
   parseStakeInput,
   validateLockedOddsQuote,
@@ -99,6 +101,20 @@ test("basket totals count expanded lines and invalid stakes", () => {
     totalStake: 0,
     invalidStakeCount: 1,
   });
+});
+
+test("single-bet tap decision clears pending, ignores slip items, and sets new pending items", () => {
+  assert.equal(getSingleBetTapDecision("1:WIN:", [], "1:WIN:"), "clear-pending");
+  assert.equal(getSingleBetTapDecision(null, ["1:WIN:"], "1:WIN:"), "ignore-basket-item");
+  assert.equal(getSingleBetTapDecision(null, [], "1:WIN:"), "set-pending");
+  assert.equal(getSingleBetTapDecision("1:WIN:", [], "2:PLACE:"), "set-pending");
+});
+
+test("combo pending decision clears stale combo sheets and keeps non-combo pending items", () => {
+  assert.equal(getComboPendingDecision("WIN_PLACE_COMBO", null, null), "clear-pending");
+  assert.equal(getComboPendingDecision("WIN_PLACE_COMBO", "1", null), "clear-pending");
+  assert.equal(getComboPendingDecision("WIN_PLACE_COMBO", "1", "2"), "set-pending");
+  assert.equal(getComboPendingDecision("WIN", "1", null), "keep-pending");
 });
 
 test("potential payout uses app multiplier and floors whole coins", () => {
