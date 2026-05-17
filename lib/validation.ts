@@ -3,7 +3,7 @@ import { isMainHkjcRacecourse } from "@/lib/hkjc-racecard";
 import { MIN_BET_AMOUNT } from "@/lib/rules";
 
 const raceSingleBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE"]);
-const raceBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE", "WIN_PLACE_COMBO"]);
+const raceBetTypeSchema = z.enum(["WIN", "PLACE", "WIN_PLACE", "WIN_PLACE_COMBO", "QUINELLA"]);
 
 export const usernameSchema = z
   .string()
@@ -83,9 +83,11 @@ export const raceSchema = z.object({
 const raceBasketItemSchema = z.object({
   selectedHorseNo: z.string().trim().min(1, "Choose a horse.").max(10, "Horse number is too long."),
   selectedPlaceHorseNo: z.string().trim().max(10, "Horse number is too long.").optional().default(""),
+  selectedLegHorseNos: z.array(z.string().trim().min(1).max(10)).max(5).optional().default([]),
   betType: raceBetTypeSchema,
   quotedWinOdds: z.string().trim().max(20).optional().default(""),
   quotedPlaceOdds: z.string().trim().max(20).optional().default(""),
+  quotedQuinellaOdds: z.record(z.string(), z.string().trim().max(20)).optional().default({}),
   unitBetAmount: z.coerce.number().int().min(MIN_BET_AMOUNT, `Minimum bet is ${MIN_BET_AMOUNT} coins.`).max(1_000_000),
 }).superRefine((value, context) => {
   if ((value.betType === "WIN" || value.betType === "WIN_PLACE") && !value.quotedWinOdds) {
@@ -129,6 +131,43 @@ const raceBasketItemSchema = z.object({
       });
     }
   }
+
+  if (value.betType === "QUINELLA") {
+    if (value.selectedLegHorseNos.length < 1) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose at least one leg horse.",
+        path: ["selectedLegHorseNos"],
+      });
+    }
+
+    const uniqueLegHorseNos = new Set(value.selectedLegHorseNos);
+    if (uniqueLegHorseNos.size !== value.selectedLegHorseNos.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose unique leg horses.",
+        path: ["selectedLegHorseNos"],
+      });
+    }
+
+    if (value.selectedLegHorseNos.includes(value.selectedHorseNo)) {
+      context.addIssue({
+        code: "custom",
+        message: "Banker cannot also be a leg horse.",
+        path: ["selectedLegHorseNos"],
+      });
+    }
+
+    for (const legHorseNo of value.selectedLegHorseNos) {
+      if (!value.quotedQuinellaOdds[legHorseNo]) {
+        context.addIssue({
+          code: "custom",
+          message: "Odds are unavailable. Try again shortly.",
+          path: ["quotedQuinellaOdds", legHorseNo],
+        });
+      }
+    }
+  }
 });
 
 function parseBasketItems(value: unknown) {
@@ -157,7 +196,10 @@ export const raceBasketSchema = z.object({
   const keys = new Set<string>();
 
   value.basketItems.forEach((item, index) => {
-    const key = `${item.selectedHorseNo}:${item.betType}:${item.selectedPlaceHorseNo}`;
+    const key =
+      item.betType === "QUINELLA"
+        ? `${item.selectedHorseNo}:${item.betType}:${[...item.selectedLegHorseNos].sort().join("|")}`
+        : `${item.selectedHorseNo}:${item.betType}:${item.selectedPlaceHorseNo}`;
     if (keys.has(key)) {
       context.addIssue({
         code: "custom",

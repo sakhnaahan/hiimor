@@ -1,18 +1,53 @@
-import type { HkjcRunner } from "@/lib/hkjc-racecard";
+import type { HkjcQuinellaOdds } from "@/lib/hkjc-odds";
 import { parseOdds } from "@/lib/hkjc-odds";
+import type { HkjcRunner } from "@/lib/hkjc-racecard";
 import { MIN_BET_AMOUNT } from "@/lib/rules";
 
 export type QuickStakeAction = "max" | "clear";
-export type RaceBetType = "WIN" | "PLACE" | "WIN_PLACE" | "WIN_PLACE_COMBO";
-export type RaceBetLineType = "WIN" | "PLACE";
+export type RaceBetType =
+  | "WIN"
+  | "PLACE"
+  | "WIN_PLACE"
+  | "WIN_PLACE_COMBO"
+  | "QUINELLA";
+export type RaceBetLineType = "WIN" | "PLACE" | "QUINELLA";
 export type SingleBetTapDecision = "clear-pending" | "ignore-basket-item" | "set-pending";
 export type ComboPendingDecision = "clear-pending" | "keep-pending" | "set-pending";
+export type QuinellaPendingDecision = "clear-pending" | "keep-pending" | "set-pending";
 export type MobileBetMode = "win-place" | "combo-wp" | "quinella";
 export type PendingBetClearMode = "none" | "combo-only" | "all";
+
+export const QUINELLA_MAX_LEGS = 5;
+
+export type QuinellaDraft = {
+  bankerHorseNo: string | null;
+  legHorseNos: string[];
+};
+
+export type QuinellaHighlightedCell = {
+  horseNo: string;
+  odds: string | null;
+  displayOdds: string | null;
+  isBanker: boolean;
+  isLeg: boolean;
+  isHighlighted: boolean;
+  isIntersection: boolean;
+};
+
+export type QuinellaOddsMatrixRow = {
+  horseNo: string;
+  cells: QuinellaHighlightedCell[];
+};
+
+export type QuinellaOddsMatrix = {
+  horseNos: string[];
+  rows: QuinellaOddsMatrixRow[];
+};
 
 export type RaceBasketTotalItem = {
   betType: RaceBetType;
   unitBetAmount: string | number;
+  quinellaLegHorseNos?: readonly string[];
 };
 
 export function parseStakeInput(value: string) {
@@ -36,21 +71,43 @@ export function getQuickStakeValue(action: QuickStakeAction, balance: number) {
   return "";
 }
 
+export function buildQuinellaPairKey(horseNoA: string, horseNoB: string) {
+  const horseNos = [horseNoA, horseNoB].sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10));
+  return `${horseNos[0]}|${horseNos[1]}`;
+}
+
 export function getBetLineTypes(betType: RaceBetType): RaceBetLineType[] {
   if (betType === "WIN_PLACE_COMBO") {
     return ["WIN"];
   }
 
+  if (betType === "QUINELLA") {
+    return ["QUINELLA"];
+  }
+
   return betType === "WIN_PLACE" ? ["WIN", "PLACE"] : [betType];
 }
 
-export function getBetLineCount(betType: RaceBetType) {
+export function getQuinellaLineCount(legHorseNos: readonly string[]) {
+  return legHorseNos.length;
+}
+
+export function getBetLineCount(
+  betType: RaceBetType,
+  options: {
+    quinellaLegHorseNos?: readonly string[];
+  } = {},
+) {
+  if (betType === "QUINELLA") {
+    return getQuinellaLineCount(options.quinellaLegHorseNos ?? []);
+  }
+
   return getBetLineTypes(betType).length;
 }
 
-export function getTotalStake(stakeInput: string, betType: RaceBetType) {
+export function getTotalStake(stakeInput: string, betType: RaceBetType, options?: { quinellaLegHorseNos?: readonly string[] }) {
   const stake = parseStakeInput(stakeInput);
-  return stake === null ? null : stake * getBetLineCount(betType);
+  return stake === null ? null : stake * getBetLineCount(betType, options);
 }
 
 export function canSubmitStake(stakeInput: string, balance: number, betType: RaceBetType = "WIN") {
@@ -106,12 +163,24 @@ export function getRunnerLockedPlaceOdds(runner: HkjcRunner | null | undefined) 
   return parseOdds(runner.placeOdds);
 }
 
+export function getQuinellaOddsValue(
+  quinellaOdds: readonly HkjcQuinellaOdds[],
+  horseNoA: string,
+  horseNoB: string,
+) {
+  const pairKey = buildQuinellaPairKey(horseNoA, horseNoB);
+  const entry = quinellaOdds.find(
+    (oddsEntry) => buildQuinellaPairKey(oddsEntry.horseNoA, oddsEntry.horseNoB) === pairKey,
+  );
+  return parseOdds(entry?.odds);
+}
+
 export function calculatePotentialPayoutForRunner(
   stakeInput: string,
   runner: HkjcRunner | null | undefined,
   betType: RaceBetType = "WIN",
 ) {
-  if (betType === "WIN_PLACE_COMBO") {
+  if (betType === "WIN_PLACE_COMBO" || betType === "QUINELLA") {
     return 0;
   }
 
@@ -131,6 +200,23 @@ export function calculateWinPlaceComboPayout(
   return winOdds === null || placeOdds === null ? 0 : calculatePotentialPayout(stakeInput, winOdds * placeOdds);
 }
 
+export function calculateQuinellaPayout(
+  stakeInput: string,
+  quinellaOdds: readonly HkjcQuinellaOdds[],
+  bankerHorseNo: string,
+  legHorseNos: readonly string[],
+) {
+  const stake = parseStakeInput(stakeInput);
+  if (stake === null) {
+    return 0;
+  }
+
+  return legHorseNos.reduce((total, legHorseNo) => {
+    const lockedOdds = getQuinellaOddsValue(quinellaOdds, bankerHorseNo, legHorseNo);
+    return total + (lockedOdds === null ? 0 : Math.floor(stake * lockedOdds));
+  }, 0);
+}
+
 export function getBasketTotals(items: readonly RaceBasketTotalItem[]) {
   return items.reduce(
     (totals, item) => {
@@ -140,7 +226,9 @@ export function getBasketTotals(items: readonly RaceBasketTotalItem[]) {
             ? item.unitBetAmount
             : null
           : parseStakeInput(item.unitBetAmount);
-      const lineCount = getBetLineCount(item.betType);
+      const lineCount = getBetLineCount(item.betType, {
+        quinellaLegHorseNos: item.quinellaLegHorseNos,
+      });
 
       return {
         itemCount: totals.itemCount + 1,
@@ -174,17 +262,154 @@ export function getComboPendingDecision(
   nextWinHorseNo: string | null,
   nextPlaceHorseNo: string | null,
 ): ComboPendingDecision {
-  if (
-    nextWinHorseNo &&
-    nextPlaceHorseNo &&
-    nextWinHorseNo !== nextPlaceHorseNo
-  ) {
+  if (nextWinHorseNo && nextPlaceHorseNo && nextWinHorseNo !== nextPlaceHorseNo) {
     return "set-pending";
   }
 
-  return pendingBetType === "WIN_PLACE_COMBO"
-    ? "clear-pending"
-    : "keep-pending";
+  return pendingBetType === "WIN_PLACE_COMBO" ? "clear-pending" : "keep-pending";
+}
+
+export function createEmptyQuinellaDraft(): QuinellaDraft {
+  return {
+    bankerHorseNo: null,
+    legHorseNos: [],
+  };
+}
+
+export function selectQuinellaBanker(draft: QuinellaDraft, horseNo: string): QuinellaDraft {
+  return {
+    bankerHorseNo: horseNo,
+    legHorseNos: draft.legHorseNos.filter((legHorseNo) => legHorseNo !== horseNo),
+  };
+}
+
+export function toggleQuinellaLeg(draft: QuinellaDraft, horseNo: string): QuinellaDraft {
+  if (draft.bankerHorseNo === horseNo) {
+    return draft;
+  }
+
+  if (draft.legHorseNos.includes(horseNo)) {
+    return {
+      ...draft,
+      legHorseNos: draft.legHorseNos.filter((legHorseNo) => legHorseNo !== horseNo),
+    };
+  }
+
+  if (draft.legHorseNos.length >= QUINELLA_MAX_LEGS) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    legHorseNos: [...draft.legHorseNos, horseNo].sort(
+      (left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10),
+    ),
+  };
+}
+
+export function isValidQuinellaDraft(draft: QuinellaDraft) {
+  return Boolean(
+    draft.bankerHorseNo &&
+      draft.legHorseNos.length >= 1 &&
+      draft.legHorseNos.length <= QUINELLA_MAX_LEGS &&
+      !draft.legHorseNos.includes(draft.bankerHorseNo),
+  );
+}
+
+export function getQuinellaPendingDecision(
+  pendingBetType: RaceBetType | null | undefined,
+  nextDraft: QuinellaDraft,
+  hasQuotedOdds: boolean,
+): QuinellaPendingDecision {
+  if (isValidQuinellaDraft(nextDraft) && hasQuotedOdds) {
+    return "set-pending";
+  }
+
+  return pendingBetType === "QUINELLA" ? "clear-pending" : "keep-pending";
+}
+
+export function buildQuinellaQuotedOddsMap(
+  quinellaOdds: readonly HkjcQuinellaOdds[],
+  bankerHorseNo: string | null,
+  legHorseNos: readonly string[],
+) {
+  if (!bankerHorseNo) {
+    return null;
+  }
+
+  const entries = legHorseNos.map((legHorseNo) => {
+    const pairKey = buildQuinellaPairKey(bankerHorseNo, legHorseNo);
+    const oddsEntry = quinellaOdds.find(
+      (entry) => buildQuinellaPairKey(entry.horseNoA, entry.horseNoB) === pairKey,
+    );
+    return oddsEntry ? [legHorseNo, oddsEntry.odds] : null;
+  });
+
+  if (entries.some((entry) => entry === null)) {
+    return null;
+  }
+
+  return Object.fromEntries(entries as Array<[string, string]>);
+}
+
+export function formatQuinellaMatrixDisplayOdds(odds: string | null | undefined) {
+  const parsedOdds = parseOdds(odds);
+  if (parsedOdds === null) {
+    return null;
+  }
+
+  return String(Math.round(parsedOdds));
+}
+
+export function buildQuinellaOddsMatrix(
+  runners: readonly HkjcRunner[],
+  quinellaOdds: readonly HkjcQuinellaOdds[],
+  bankerHorseNo: string | null,
+  legHorseNos: readonly string[],
+): QuinellaOddsMatrix {
+  const horseNos = runners
+    .map((runner) => runner.horseNo)
+    .sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10));
+
+  return {
+    horseNos,
+    rows: horseNos.map((rowHorseNo) => ({
+      horseNo: rowHorseNo,
+      cells: horseNos.map((columnHorseNo) => {
+        if (rowHorseNo === columnHorseNo) {
+          return {
+            horseNo: columnHorseNo,
+            odds: null,
+            displayOdds: null,
+            isBanker: bankerHorseNo === columnHorseNo,
+            isLeg: legHorseNos.includes(columnHorseNo),
+            isHighlighted: false,
+            isIntersection: false,
+          };
+        }
+
+        const oddsValue = quinellaOdds.find(
+          (entry) => buildQuinellaPairKey(entry.horseNoA, entry.horseNoB) === buildQuinellaPairKey(rowHorseNo, columnHorseNo),
+        )?.odds;
+        const rowHighlighted = rowHorseNo === bankerHorseNo || legHorseNos.includes(rowHorseNo);
+        const columnHighlighted = columnHorseNo === bankerHorseNo || legHorseNos.includes(columnHorseNo);
+        const isIntersection =
+          Boolean(bankerHorseNo) &&
+          ((rowHorseNo === bankerHorseNo && legHorseNos.includes(columnHorseNo)) ||
+            (columnHorseNo === bankerHorseNo && legHorseNos.includes(rowHorseNo)));
+
+        return {
+          horseNo: columnHorseNo,
+          odds: oddsValue ?? null,
+          displayOdds: formatQuinellaMatrixDisplayOdds(oddsValue),
+          isBanker: bankerHorseNo === columnHorseNo || bankerHorseNo === rowHorseNo,
+          isLeg: legHorseNos.includes(columnHorseNo) || legHorseNos.includes(rowHorseNo),
+          isHighlighted: rowHighlighted || columnHighlighted,
+          isIntersection,
+        };
+      }),
+    })),
+  };
 }
 
 export function getMobileBetModeTransition(
@@ -263,6 +488,20 @@ export function validateLockedWinOddsQuote({
     quotedOdds: quotedWinOdds,
     currentOdds: currentWinOdds,
     oddsAvailable,
+  });
+}
+
+export function validateLockedQuinellaOddsQuote({
+  quotedQuinellaOdds,
+  currentQuinellaOdds,
+}: {
+  quotedQuinellaOdds: string;
+  currentQuinellaOdds: string | undefined;
+}) {
+  return validateLockedOddsQuote({
+    quotedOdds: quotedQuinellaOdds,
+    currentOdds: currentQuinellaOdds,
+    oddsAvailable: Boolean(currentQuinellaOdds),
   });
 }
 

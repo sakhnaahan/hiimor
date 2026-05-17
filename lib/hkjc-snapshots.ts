@@ -82,7 +82,7 @@ function buildStoredRaceCard(snapshot: {
     return null;
   }
 
-  return {
+  const raceCard: HkjcRaceCard = {
     sourceUrl: snapshot.sourceUrl,
     raceDate: snapshot.raceDate,
     racecourseCode: snapshot.racecourseCode,
@@ -99,9 +99,14 @@ function buildStoredRaceCard(snapshot: {
     raceClass: snapshot.raceClass,
     oddsAvailable: snapshot.oddsAvailable,
     oddsLastUpdateTime: snapshot.oddsLastUpdateTime,
+    quinellaOdds: [],
+    quinellaOddsAvailable: false,
+    quinellaOddsLastUpdateTime: snapshot.oddsLastUpdateTime,
+    quinellaOddsInferred: false,
     raceOptions: [],
     runners: snapshot.runnersJson as HkjcRaceCard["runners"],
-  } satisfies HkjcRaceCard;
+  };
+  return raceCard;
 }
 
 async function populateRaceOptions(raceCard: HkjcRaceCard) {

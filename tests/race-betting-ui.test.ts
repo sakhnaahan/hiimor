@@ -2,11 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { HkjcRunner } from "@/lib/hkjc-racecard";
 import {
+  buildQuinellaOddsMatrix,
+  buildQuinellaQuotedOddsMap,
   calculatePotentialPayout,
   calculatePotentialPayoutForRunner,
+  calculateQuinellaPayout,
   calculateWinPlaceComboPayout,
   canSubmitStake,
+  createEmptyQuinellaDraft,
   findSelectedRunner,
+  formatQuinellaMatrixDisplayOdds,
   getBasketTotals,
   getBetLineCount,
   getBetLineTypes,
@@ -14,11 +19,15 @@ import {
   getMobileBetModeTransition,
   getPlaceDividendCount,
   getQuickStakeValue,
+  getQuinellaPendingDecision,
   getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
   getSingleBetTapDecision,
   isPlaceWinningPosition,
+  selectQuinellaBanker,
   parseStakeInput,
+  toggleQuinellaLeg,
+  validateLockedQuinellaOddsQuote,
   validateLockedOddsQuote,
   validateLockedWinOddsQuote,
 } from "@/lib/race-betting-ui";
@@ -102,6 +111,21 @@ test("basket totals count expanded lines and invalid stakes", () => {
     totalStake: 0,
     invalidStakeCount: 1,
   });
+  assert.deepEqual(
+    getBasketTotals([
+      {
+        betType: "QUINELLA",
+        quinellaLegHorseNos: ["2", "3", "4"],
+        unitBetAmount: "100",
+      },
+    ]),
+    {
+      itemCount: 1,
+      lineCount: 3,
+      totalStake: 300,
+      invalidStakeCount: 0,
+    },
+  );
 });
 
 test("single-bet tap decision clears pending, ignores slip items, and sets new pending items", () => {
@@ -137,6 +161,38 @@ test("mobile bet mode transition clears combo draft and pending state only when 
   });
 });
 
+test("quinella banker and leg selection enforce banker uniqueness and max legs", () => {
+  const bankerDraft = selectQuinellaBanker(createEmptyQuinellaDraft(), "5");
+  assert.deepEqual(bankerDraft, {
+    bankerHorseNo: "5",
+    legHorseNos: [],
+  });
+
+  const withLegs = toggleQuinellaLeg(
+    { bankerHorseNo: "5", legHorseNos: ["2", "3", "4", "6"] },
+    "7",
+  );
+  assert.deepEqual(withLegs.legHorseNos, ["2", "3", "4", "6", "7"]);
+  assert.deepEqual(toggleQuinellaLeg(withLegs, "8").legHorseNos, withLegs.legHorseNos);
+  assert.deepEqual(toggleQuinellaLeg(withLegs, "6").legHorseNos, ["2", "3", "4", "7"]);
+  assert.deepEqual(selectQuinellaBanker(withLegs, "6"), {
+    bankerHorseNo: "6",
+    legHorseNos: ["2", "3", "4", "7"],
+  });
+});
+
+test("quinella pending decision requires a valid banker, leg set, and odds map", () => {
+  const draft = {
+    bankerHorseNo: "5",
+    legHorseNos: ["8", "9"],
+  };
+
+  assert.equal(getQuinellaPendingDecision("QUINELLA", createEmptyQuinellaDraft(), false), "clear-pending");
+  assert.equal(getQuinellaPendingDecision("WIN", { bankerHorseNo: "5", legHorseNos: [] }, false), "keep-pending");
+  assert.equal(getQuinellaPendingDecision("WIN", draft, false), "keep-pending");
+  assert.equal(getQuinellaPendingDecision("WIN", draft, true), "set-pending");
+});
+
 test("potential payout uses app multiplier and floors whole coins", () => {
   assert.equal(calculatePotentialPayout("10000", 2), 20000);
   assert.equal(calculatePotentialPayout("10000", 2.5), 25000);
@@ -167,6 +223,18 @@ test("potential payout can use locked HKJC win odds", () => {
     ),
     1056,
   );
+  assert.equal(
+    calculateQuinellaPayout(
+      "100",
+      [
+        { horseNoA: "5", horseNoB: "8", odds: "16", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+        { horseNoA: "5", horseNoB: "9", odds: "18.5", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+      ],
+      "5",
+      ["8", "9"],
+    ),
+    3450,
+  );
 });
 
 test("locked odds validation rejects changed or unavailable odds", () => {
@@ -190,6 +258,39 @@ test("locked odds validation rejects changed or unavailable odds", () => {
     validateLockedOddsQuote({ quotedOdds: "1.8", currentOdds: "1.80", oddsAvailable: true }),
     { ok: true, lockedWinOdds: 1.8 },
   );
+  assert.deepEqual(
+    validateLockedQuinellaOddsQuote({ quotedQuinellaOdds: "16", currentQuinellaOdds: "16.0" }),
+    { ok: true, lockedWinOdds: 16 },
+  );
+});
+
+test("quinella matrix display formatter rounds to whole numbers only", () => {
+  assert.equal(formatQuinellaMatrixDisplayOdds("18.4"), "18");
+  assert.equal(formatQuinellaMatrixDisplayOdds("18.5"), "19");
+  assert.equal(formatQuinellaMatrixDisplayOdds("18.9"), "19");
+  assert.equal(formatQuinellaMatrixDisplayOdds(""), null);
+  assert.equal(formatQuinellaMatrixDisplayOdds(undefined), null);
+});
+
+test("quinella odds map and matrix highlight banker and legs", () => {
+  const runners = [runner("5", "FIVE"), runner("8", "EIGHT"), runner("9", "NINE")];
+  const quinellaOdds = [
+    { horseNoA: "5", horseNoB: "8", odds: "16.4", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "5", horseNoB: "9", odds: "18.5", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "8", horseNoB: "9", odds: "24.1", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+  ];
+
+  assert.deepEqual(buildQuinellaQuotedOddsMap(quinellaOdds, "5", ["8", "9"]), {
+    "8": "16.4",
+    "9": "18.5",
+  });
+
+  const matrix = buildQuinellaOddsMatrix(runners, quinellaOdds, "5", ["8"]);
+  assert.equal(matrix.rows[0]?.cells[1]?.odds, "16.4");
+  assert.equal(matrix.rows[0]?.cells[1]?.displayOdds, "16");
+  assert.equal(matrix.rows[0]?.cells[1]?.isIntersection, true);
+  assert.equal(matrix.rows[2]?.cells[1]?.isHighlighted, true);
+  assert.equal(matrix.rows[0]?.cells[2]?.displayOdds, "19");
 });
 
 test("place dividend qualification follows local HKJC runner-count rules", () => {

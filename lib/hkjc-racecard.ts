@@ -1,5 +1,11 @@
 import { load } from "cheerio";
-import { calculateMarketChance, getHkjcRunnerOdds, parseOdds } from "@/lib/hkjc-odds";
+import {
+  calculateMarketChance,
+  getHkjcQuinellaOdds,
+  getHkjcRunnerOdds,
+  type HkjcQuinellaOdds,
+  parseOdds,
+} from "@/lib/hkjc-odds";
 import { readStoredHkjcRaceCard, upsertHkjcRaceCardSnapshot } from "@/lib/hkjc-snapshots";
 
 const HKJC_RACECARD_URL = "https://racing.hkjc.com/en-us/local/information/racecard";
@@ -249,6 +255,10 @@ export type HkjcRaceCard = {
   raceClass: string;
   oddsAvailable: boolean;
   oddsLastUpdateTime: string;
+  quinellaOdds: HkjcQuinellaOdds[];
+  quinellaOddsAvailable: boolean;
+  quinellaOddsLastUpdateTime: string;
+  quinellaOddsInferred: boolean;
   raceOptions: HkjcRaceOption[];
   runners: HkjcRunner[];
 };
@@ -512,6 +522,10 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
     raceClass: normalizeText(race.raceClass_en ?? ""),
     oddsAvailable: false,
     oddsLastUpdateTime: "",
+    quinellaOdds: [],
+    quinellaOddsAvailable: false,
+    quinellaOddsLastUpdateTime: "",
+    quinellaOddsInferred: false,
     raceOptions,
     runners,
   };
@@ -750,6 +764,10 @@ export function parseHkjcRaceCardHtml(html: string, sourceUrl = HKJC_RACECARD_UR
     ...prize,
     oddsAvailable: false,
     oddsLastUpdateTime: "",
+    quinellaOdds: [],
+    quinellaOddsAvailable: false,
+    quinellaOddsLastUpdateTime: "",
+    quinellaOddsInferred: false,
     raceOptions: parseRaceOptions($, currentRace),
     runners,
   };
@@ -892,7 +910,7 @@ export function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceReq
     meeting.racecourseCode
   }&RaceNo=${raceNo}`;
 
-  return {
+  const raceCard: HkjcRaceCard = {
     sourceUrl,
     raceDate,
     racecourseCode: meeting.racecourseCode,
@@ -912,6 +930,10 @@ export function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceReq
     raceClass: "Main HKJC race",
     oddsAvailable: true,
     oddsLastUpdateTime,
+    quinellaOdds: [],
+    quinellaOddsAvailable: false,
+    quinellaOddsLastUpdateTime: "",
+    quinellaOddsInferred: false,
     raceOptions: Array.from({ length: raceCount }, (_, index) => ({
       raceNo: index + 1,
       raceDate,
@@ -948,6 +970,7 @@ export function buildLocalMainRaceCard(meeting: FixtureMeeting, request: RaceReq
       };
     }),
   };
+  return raceCard;
 }
 
 export function isLocalMainRaceCard(raceCard: Pick<HkjcRaceCard, "sourceUrl">) {
@@ -1091,6 +1114,15 @@ async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
   });
   raceCard.oddsAvailable = raceCard.runners.some((runner) => runner.oddsAvailable);
   raceCard.oddsLastUpdateTime = odds.find((entry) => entry.lastUpdateTime)?.lastUpdateTime ?? "";
+  raceCard.quinellaOdds = await getHkjcQuinellaOdds({
+    raceDate: raceCard.raceDate,
+    racecourseCode: raceCard.racecourseCode,
+    raceNo: raceCard.raceNo,
+  }).catch(() => []);
+  raceCard.quinellaOddsAvailable = raceCard.quinellaOdds.length > 0;
+  raceCard.quinellaOddsLastUpdateTime =
+    raceCard.quinellaOdds.find((entry) => entry.lastUpdateTime)?.lastUpdateTime ?? "";
+  raceCard.quinellaOddsInferred = false;
 
   return raceCard;
 }

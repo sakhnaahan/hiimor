@@ -20,8 +20,10 @@ import {
 } from "@/lib/validation";
 import { getHkjcUpcomingRaceCard, isLocalMainRaceCard } from "@/lib/hkjc-racecard";
 import {
+  buildQuinellaPairKey,
   getBetLineTypes,
   isPlaceWinningPosition,
+  validateLockedQuinellaOddsQuote,
   validateLockedOddsQuote,
   validateLockedWinOddsQuote,
   type RaceBetLineType,
@@ -768,7 +770,10 @@ export async function runRaceBasketAction(_: ActionState, formData: FormData): P
     lineType: RaceBetLineType;
     lockedOdds: number;
     selectedRunner: (typeof hkjcRaceCard.raceCard.runners)[number];
-    placeRunner?: (typeof hkjcRaceCard.raceCard.runners)[number];
+    comparisonRunner?: (typeof hkjcRaceCard.raceCard.runners)[number];
+    storedBetType: string;
+    storedSelectedHorse: string;
+    storedSelectedHorseNo: string;
   }> = [];
 
   for (const item of parsed.data.basketItems) {
@@ -810,8 +815,48 @@ export async function runRaceBasketAction(_: ActionState, formData: FormData): P
         lineType: "WIN",
         lockedOdds: winOddsValidation.lockedWinOdds * placeOddsValidation.lockedWinOdds,
         selectedRunner,
-        placeRunner,
+        comparisonRunner: placeRunner,
+        storedBetType: "WIN_PLACE_COMBO",
+        storedSelectedHorse: `${selectedRunner.name} Win + ${placeRunner.name} Place`,
+        storedSelectedHorseNo: `${selectedRunner.horseNo}|${placeRunner.horseNo}`,
       });
+      continue;
+    }
+
+    if (item.betType === "QUINELLA") {
+      for (const legHorseNo of item.selectedLegHorseNos) {
+        const legRunner = hkjcRaceCard.raceCard.runners.find((runner) => runner.horseNo === legHorseNo);
+        if (!legRunner || legRunner.horseNo === selectedRunner.horseNo) {
+          return { message: await localizedMessage("Selected horse is no longer available in the current HKJC racecard.") };
+        }
+
+        const currentOdds = hkjcRaceCard.raceCard.quinellaOdds.find(
+          (entry) => buildQuinellaPairKey(entry.horseNoA, entry.horseNoB) === buildQuinellaPairKey(selectedRunner.horseNo, legHorseNo),
+        )?.odds;
+        const oddsValidation = validateLockedQuinellaOddsQuote({
+          quotedQuinellaOdds: item.quotedQuinellaOdds[legHorseNo] ?? "",
+          currentQuinellaOdds: currentOdds,
+        });
+
+        if (!oddsValidation.ok && oddsValidation.reason === "unavailable") {
+          return { message: await localizedMessage("Odds are unavailable. Try again shortly.") };
+        }
+
+        if (!oddsValidation.ok) {
+          return { message: await localizedMessage("Odds changed. Please confirm again.") };
+        }
+
+        preparedLines.push({
+          betAmount: item.unitBetAmount,
+          lineType: "QUINELLA",
+          lockedOdds: oddsValidation.lockedWinOdds,
+          selectedRunner,
+          comparisonRunner: legRunner,
+          storedBetType: "QUINELLA",
+          storedSelectedHorse: `${selectedRunner.name} Banker + ${legRunner.name} Leg`,
+          storedSelectedHorseNo: buildQuinellaPairKey(selectedRunner.horseNo, legRunner.horseNo),
+        });
+      }
       continue;
     }
 
@@ -842,6 +887,9 @@ export async function runRaceBasketAction(_: ActionState, formData: FormData): P
         lineType,
         lockedOdds: oddsValidation.lockedWinOdds,
         selectedRunner,
+        storedBetType: lineType,
+        storedSelectedHorse: selectedRunner.name,
+        storedSelectedHorseNo: selectedRunner.horseNo,
       });
     }
   }
@@ -880,31 +928,47 @@ export async function runRaceBasketAction(_: ActionState, formData: FormData): P
         const localSelectedPlace = localPlacings?.find(
           (placing) => placing.runner.horseNo === line.selectedRunner.horseNo,
         );
-        const localComboPlace = line.placeRunner
-          ? localPlacings?.find((placing) => placing.runner.horseNo === line.placeRunner?.horseNo)
+        const localComparisonPlace = line.comparisonRunner
+          ? localPlacings?.find((placing) => placing.runner.horseNo === line.comparisonRunner?.horseNo)
           : null;
+        const officialQuinellaHorseNos = localPlacings?.slice(0, 2).map((placing) => placing.runner.horseNo).sort();
         const localLineWin =
-          line.placeRunner
+          line.storedBetType === "WIN_PLACE_COMBO"
             ? localWinner?.horseNo === line.selectedRunner.horseNo &&
-              isPlaceWinningPosition(localComboPlace?.place, hkjcRaceCard.raceCard.runners.length)
+              isPlaceWinningPosition(localComparisonPlace?.place, hkjcRaceCard.raceCard.runners.length)
+            : line.lineType === "QUINELLA"
+            ? Boolean(
+                line.comparisonRunner &&
+                  officialQuinellaHorseNos &&
+                  officialQuinellaHorseNos.length === 2 &&
+                  officialQuinellaHorseNos[0] ===
+                    buildQuinellaPairKey(line.selectedRunner.horseNo, line.comparisonRunner.horseNo).split("|")[0] &&
+                  officialQuinellaHorseNos[1] ===
+                    buildQuinellaPairKey(line.selectedRunner.horseNo, line.comparisonRunner.horseNo).split("|")[1],
+              )
             : line.lineType === "WIN"
             ? localWinner?.horseNo === line.selectedRunner.horseNo
             : isPlaceWinningPosition(localSelectedPlace?.place, hkjcRaceCard.raceCard.runners.length);
         const localPayout = localPlacings && localLineWin ? Math.floor(line.betAmount * line.lockedOdds) : 0;
+        const selectedFinishPlace =
+          line.lineType === "QUINELLA"
+            ? [localSelectedPlace?.place, localComparisonPlace?.place]
+                .filter((place): place is string => Boolean(place))
+                .sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10))
+                .join("/") || null
+            : line.storedBetType === "WIN_PLACE_COMBO"
+              ? localComparisonPlace?.place
+              : localSelectedPlace?.place;
 
         const race = await tx.raceResult.create({
           data: {
             userId: player.id,
-            selectedHorse: line.placeRunner
-              ? `${line.selectedRunner.name} Win + ${line.placeRunner.name} Place`
-              : line.selectedRunner.name,
-            selectedHorseNo: line.placeRunner
-              ? `${line.selectedRunner.horseNo}|${line.placeRunner.horseNo}`
-              : line.selectedRunner.horseNo,
-            selectedFinishPlace: line.placeRunner ? localComboPlace?.place : localSelectedPlace?.place,
+            selectedHorse: line.storedSelectedHorse,
+            selectedHorseNo: line.storedSelectedHorseNo,
+            selectedFinishPlace,
             winningHorse: localWinner?.name ?? "",
             winningHorseNo: localWinner?.horseNo,
-            betType: line.placeRunner ? "WIN_PLACE_COMBO" : line.lineType,
+            betType: line.storedBetType,
             betAmount: line.betAmount,
             multiplierUsed: line.lockedOdds,
             payout: localPayout,

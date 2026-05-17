@@ -53,6 +53,9 @@ export const translations = {
     comboWp: "Combo W+P",
     quinella: "Quinella",
     quinellaComingSoon: "Quinella betting is coming soon.",
+    banker: "Banker",
+    legs: "Legs",
+    quinellaOddsUnavailable: "Quinella odds are unavailable right now.",
     gear: "Gear",
     last6: "Last 6",
     horseWeight: "Horse Wt.",
@@ -337,7 +340,7 @@ export function getTranslations(language: Language) {
 }
 
 export function translate(language: Language, key: TranslationKey) {
-  return translations[language][key];
+  return (translations[language] as Record<TranslationKey, string>)[key];
 }
 
 export function interpolate(

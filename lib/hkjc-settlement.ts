@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getHkjcRaceResult } from "@/lib/hkjc-results";
 import { readStoredHkjcRaceResult } from "@/lib/hkjc-snapshots";
+import { buildQuinellaPairKey } from "@/lib/race-betting-ui";
 import { isPlaceWinningPosition } from "@/lib/race-betting-ui";
 
 type SettlementOptions = {
@@ -42,6 +43,11 @@ function canCheckOfficialResult(race: PendingRace) {
 function parseComboHorseNos(selectedHorseNo: string | null) {
   const [winHorseNo, placeHorseNo] = String(selectedHorseNo ?? "").split("|");
   return winHorseNo && placeHorseNo && winHorseNo !== placeHorseNo ? { winHorseNo, placeHorseNo } : null;
+}
+
+function parseSelectedHorsePair(selectedHorseNo: string | null) {
+  const [horseNoA, horseNoB] = String(selectedHorseNo ?? "").split("|");
+  return horseNoA && horseNoB && horseNoA !== horseNoB ? { horseNoA, horseNoB } : null;
 }
 
 export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
@@ -99,18 +105,34 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
     }
 
     const comboHorseNos = race.betType === "WIN_PLACE_COMBO" ? parseComboHorseNos(race.selectedHorseNo) : null;
+    const quinellaHorseNos = race.betType === "QUINELLA" ? parseSelectedHorsePair(race.selectedHorseNo) : null;
     const selectedResult = officialResult.runners.find((runner) =>
       comboHorseNos ? runner.horseNo === comboHorseNos.placeHorseNo : runner.horseNo === race.selectedHorseNo,
     );
     const betType = race.betType === "PLACE" ? "PLACE" : "WIN";
+    const officialQuinellaPairKey = officialResult.runners.length >= 2
+      ? buildQuinellaPairKey(officialResult.runners[0]!.horseNo, officialResult.runners[1]!.horseNo)
+      : null;
     const isWin = comboHorseNos
       ? officialResult.winner.horseNo === comboHorseNos.winHorseNo &&
         isPlaceWinningPosition(selectedResult?.place, officialResult.runners.length)
+      : quinellaHorseNos
+        ? officialQuinellaPairKey === buildQuinellaPairKey(quinellaHorseNos.horseNoA, quinellaHorseNos.horseNoB)
       : betType === "PLACE"
         ? isPlaceWinningPosition(selectedResult?.place, officialResult.runners.length)
         : officialResult.winner.horseNo === race.selectedHorseNo;
     const payout = isWin ? Math.floor(race.betAmount * race.multiplierUsed) : 0;
     const finalResult = isWin ? "WIN" : "LOSS";
+    const quinellaSelectedPlaces = quinellaHorseNos
+      ? officialResult.runners
+          .filter(
+            (runner) =>
+              runner.horseNo === quinellaHorseNos.horseNoA || runner.horseNo === quinellaHorseNos.horseNoB,
+          )
+          .map((runner) => runner.place)
+          .sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10))
+          .join("/")
+      : null;
 
     await prisma.$transaction(async (tx) => {
       const currentRace = await tx.raceResult.findUnique({
@@ -126,7 +148,7 @@ export async function settlePendingHkjcBets(options: SettlementOptions = {}) {
         data: {
           winningHorse: officialResult.winner.horseName,
           winningHorseNo: officialResult.winner.horseNo,
-          selectedFinishPlace: selectedResult?.place ?? null,
+          selectedFinishPlace: quinellaSelectedPlaces || selectedResult?.place || null,
           payout,
           result: finalResult,
           settledAt: new Date(),

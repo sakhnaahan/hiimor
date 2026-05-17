@@ -3,7 +3,12 @@ import test from "node:test";
 import { HORSES } from "@/lib/constants";
 import { isMainAdminUsername } from "@/lib/admin";
 import { applyRaceBalance, calculateRaceOutcome } from "@/lib/game";
-import { calculateMarketChance, parseHkjcRunnerOddsResponse } from "@/lib/hkjc-odds";
+import {
+  calculateMarketChance,
+  getHkjcQuinellaOdds,
+  parseHkjcQuinellaOddsResponse,
+  parseHkjcRunnerOddsResponse,
+} from "@/lib/hkjc-odds";
 import { canResetUserPassword, generateTemporaryPassword } from "@/lib/password-reset";
 import {
   changePasswordSchema,
@@ -103,6 +108,18 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
       ...validBasketBet,
       basketItems: JSON.stringify([
         {
+          selectedHorseNo: "5",
+          selectedLegHorseNos: ["8", "9"],
+          betType: "QUINELLA",
+          quotedWinOdds: "",
+          quotedPlaceOdds: "",
+          quotedQuinellaOdds: {
+            "8": "16",
+            "9": "18",
+          },
+          unitBetAmount: "100",
+        },
+        {
           selectedHorseNo: "1",
           selectedPlaceHorseNo: "2",
           betType: "WIN_PLACE_COMBO",
@@ -113,6 +130,23 @@ test("coin mutation validation rejects invalid recharge and bet values", () => {
       ]),
     }).success,
     true,
+  );
+  assert.equal(
+    raceBasketSchema.safeParse({
+      ...validBasketBet,
+      basketItems: JSON.stringify([
+        {
+          selectedHorseNo: "5",
+          selectedLegHorseNos: ["5"],
+          betType: "QUINELLA",
+          quotedQuinellaOdds: {
+            "5": "16",
+          },
+          unitBetAmount: "100",
+        },
+      ]),
+    }).success,
+    false,
   );
   assert.equal(
     raceBasketSchema.safeParse({
@@ -254,6 +288,55 @@ test("HKJC odds parser combines win and place pool odds by runner", () => {
     placeSellStatus: "START_SELL",
     placeLastUpdateTime: "10:01",
   });
+});
+
+test("HKJC Quinella odds parser normalizes pair combinations", () => {
+  const odds = parseHkjcQuinellaOddsResponse({
+    data: {
+      raceMeetings: [
+        {
+          pmPools: [
+            {
+              oddsType: "QIN",
+              status: "START_SELL",
+              sellStatus: "START_SELL",
+              lastUpdateTime: "10:02",
+              oddsNodes: [{ combString: "08-05", oddsValue: "16", hotFavourite: false }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(odds[0], {
+    horseNoA: "5",
+    horseNoB: "8",
+    odds: "16",
+    poolStatus: "START_SELL",
+    sellStatus: "START_SELL",
+    lastUpdateTime: "10:02",
+    inferred: false,
+  });
+});
+
+test("HKJC Quinella odds fetch returns empty data when official QIN is blocked", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("blocked");
+  }) as typeof fetch;
+
+  try {
+    const odds = await getHkjcQuinellaOdds({
+      raceDate: "2026/05/09",
+      racecourseCode: "ST",
+      raceNo: 1,
+    });
+
+    assert.deepEqual(odds, []);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test("main admin helper matches ADMIN_USERNAME", () => {

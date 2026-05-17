@@ -894,6 +894,109 @@ textarea {
   padding: 4px 9px;
 }
 
+.quinella-mode-shell {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.quinella-draft {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quinella-draft span {
+  background: var(--brand-soft);
+  border-radius: 999px;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 5px 9px;
+}
+
+.quinella-draft button {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  min-height: 30px;
+  padding: 4px 10px;
+}
+
+.quinella-odds-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.quinella-odds-toggle {
+  align-items: center;
+  background: #f7f9fb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--brand-strong);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.quinella-matrix-wrap {
+  padding: 2px 0 6px;
+  overflow-x: auto;
+}
+
+.quinella-matrix {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: max-content;
+}
+
+.quinella-matrix th,
+.quinella-matrix td {
+  border: 1px solid #6d87b4;
+  font-size: 13px;
+  line-height: 1.1;
+  min-width: 46px;
+  padding: 8px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.quinella-matrix th {
+  background: #5f7fb2;
+  color: white;
+  font-weight: 900;
+}
+
+.quinella-matrix td {
+  background: white;
+  color: #475569;
+  font-weight: 700;
+}
+
+.quinella-matrix .is-banker {
+  background: #173f84;
+}
+
+.quinella-matrix .is-leg {
+  background: #4f71a7;
+}
+
+.quinella-matrix td.is-highlighted {
+  background: #eef4ff;
+}
+
+.quinella-matrix td.is-intersection {
+  background: #f0522a;
+  color: white;
+}
+
 .quinella-mode-note {
   margin: 0;
 }
@@ -1044,6 +1147,10 @@ textarea {
   gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 10px 0;
+}
+
+.runner-odds-grid.is-quinella-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .runner-odds-grid > span,
@@ -2418,6 +2525,10 @@ textarea {
     padding: 0;
   }
 
+  .runner-odds-grid.is-quinella-grid {
+    grid-template-columns: 60px 60px;
+  }
+
   .runner-odds-grid > span,
   .runner-odds-grid > button {
     background: #e6eef5;
@@ -2431,6 +2542,27 @@ textarea {
 
   .runner-odds-grid b {
     font-size: 11px;
+  }
+
+  .quinella-mode-shell {
+    border: 0;
+    border-radius: 4px;
+    padding: 8px;
+  }
+
+  .quinella-draft {
+    gap: 6px;
+  }
+
+  .quinella-matrix-wrap {
+    padding: 2px 0 4px;
+  }
+
+  .quinella-matrix th,
+  .quinella-matrix td {
+    font-size: 12px;
+    min-width: 42px;
+    padding: 6px 4px;
   }
 
   .runner-expand {

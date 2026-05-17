@@ -74,6 +74,9 @@ test("fallback racecard builder can preload all races for the next ST/HV meeting
 
   assert.equal(raceCard.racecourseCode, "ST");
   assert.equal(raceCard.raceNo, 2);
+  assert.deepEqual(raceCard.quinellaOdds, []);
+  assert.equal(raceCard.quinellaOddsAvailable, false);
+  assert.equal(raceCard.quinellaOddsInferred, false);
   assert.deepEqual(raceCard.raceOptions, [
     { raceNo: 1, raceDate: "2026/05/24", racecourseCode: "ST" },
     { raceNo: 2, raceDate: "2026/05/24", racecourseCode: "ST" },

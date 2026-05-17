@@ -42,6 +42,16 @@ export type HkjcRunnerOdds = HkjcWinOdds & {
   placeLastUpdateTime?: string;
 };
 
+export type HkjcQuinellaOdds = {
+  horseNoA: string;
+  horseNoB: string;
+  odds: string;
+  poolStatus: string;
+  sellStatus: string;
+  lastUpdateTime: string;
+  inferred: boolean;
+};
+
 const ODDS_QUERY = `
       query racing($date: String, $venueCode: String, $oddsTypes: [OddsType], $raceNo: Int) {
           raceMeetings(date: $date, venueCode: $venueCode)
@@ -84,6 +94,21 @@ const ODDS_QUERY = `
 function normalizeHorseNo(combString: string) {
   const normalized = Number.parseInt(combString, 10);
   return Number.isFinite(normalized) ? String(normalized) : combString;
+}
+
+function compareHorseNos(left: string, right: string) {
+  return Number.parseInt(left, 10) - Number.parseInt(right, 10);
+}
+
+function normalizeQuinellaPair(combString: string) {
+  const horseNos = (combString.match(/\d+/g) ?? [])
+    .map((value) => normalizeHorseNo(value))
+    .filter(Boolean)
+    .sort(compareHorseNos);
+
+  return horseNos.length === 2 && horseNos[0] !== horseNos[1]
+    ? { horseNoA: horseNos[0], horseNoB: horseNos[1] }
+    : null;
 }
 
 export function calculateMarketChance(winOdds: string) {
@@ -171,6 +196,68 @@ export function parseHkjcRunnerOddsResponse(json: HkjcOddsResponse) {
   return [...oddsByHorseNo.values()];
 }
 
+export function parseHkjcQuinellaOddsResponse(json: HkjcOddsResponse) {
+  const pools = json.data?.raceMeetings?.[0]?.pmPools ?? [];
+  const quinellaPool = pools.find((pool) => pool.oddsType === "QIN");
+  if (!quinellaPool?.oddsNodes) {
+    return [];
+  }
+
+  const entries = new Map<string, HkjcQuinellaOdds>();
+  for (const node of quinellaPool.oddsNodes) {
+    const normalizedPair = normalizeQuinellaPair(node.combString);
+    const parsedOdds = parseOdds(node.oddsValue);
+    if (!normalizedPair || parsedOdds === null) {
+      continue;
+    }
+
+    const key = `${normalizedPair.horseNoA}|${normalizedPair.horseNoB}`;
+    entries.set(key, {
+      ...normalizedPair,
+      odds: String(parsedOdds),
+      poolStatus: quinellaPool.status ?? "",
+      sellStatus: quinellaPool.sellStatus ?? "",
+      lastUpdateTime: quinellaPool.lastUpdateTime ?? "",
+      inferred: false,
+    });
+  }
+
+  return [...entries.values()];
+}
+
+function createOddsRequest({
+  raceDate,
+  racecourseCode,
+  raceNo,
+  oddsTypes,
+}: {
+  raceDate: string;
+  racecourseCode: string;
+  raceNo: number;
+  oddsTypes: string[];
+}) {
+  return fetch(HKJC_GRAPHQL_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://bet.hkjc.com",
+      referer: "https://bet.hkjc.com/en/racing/pwin",
+      "user-agent": "Mozilla/5.0 (compatible; private-horse-race/0.1; +https://bet.hkjc.com)",
+    },
+    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
+    body: JSON.stringify({
+      query: ODDS_QUERY,
+      variables: {
+        date: raceDate.replace(/\//g, "-"),
+        venueCode: racecourseCode,
+        oddsTypes,
+        raceNo,
+      },
+    }),
+    next: { revalidate: HKJC_ODDS_CACHE_SECONDS },
+  });
+}
+
 export async function getHkjcRunnerOdds({
   raceDate,
   racecourseCode,
@@ -180,25 +267,11 @@ export async function getHkjcRunnerOdds({
   racecourseCode: string;
   raceNo: number;
 }) {
-  const response = await fetch(HKJC_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "origin": "https://bet.hkjc.com",
-      "referer": "https://bet.hkjc.com/en/racing/pwin",
-      "user-agent": "Mozilla/5.0 (compatible; private-horse-race/0.1; +https://bet.hkjc.com)",
-    },
-    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
-    body: JSON.stringify({
-      query: ODDS_QUERY,
-      variables: {
-        date: raceDate.replace(/\//g, "-"),
-        venueCode: racecourseCode,
-        oddsTypes: ["WIN", "PLA"],
-        raceNo,
-      },
-    }),
-    next: { revalidate: HKJC_ODDS_CACHE_SECONDS },
+  const response = await createOddsRequest({
+    raceDate,
+    racecourseCode,
+    raceNo,
+    oddsTypes: ["WIN", "PLA"],
   });
 
   if (!response.ok) {
@@ -207,6 +280,37 @@ export async function getHkjcRunnerOdds({
 
   const json = (await response.json()) as HkjcOddsResponse;
   return parseHkjcRunnerOddsResponse(json);
+}
+
+export async function getHkjcQuinellaOdds({
+  raceDate,
+  racecourseCode,
+  raceNo,
+}: {
+  raceDate: string;
+  racecourseCode: string;
+  raceNo: number;
+}) {
+  try {
+    const response = await createOddsRequest({
+      raceDate,
+      racecourseCode,
+      raceNo,
+      oddsTypes: ["QIN"],
+    });
+
+    if (response.ok) {
+      const json = (await response.json()) as HkjcOddsResponse;
+      const officialOdds = parseHkjcQuinellaOddsResponse(json);
+      if (officialOdds.length > 0) {
+        return officialOdds;
+      }
+    }
+  } catch {
+    // Treat missing or blocked official Quinella pools as unavailable.
+  }
+
+  return [];
 }
 
 export async function getHkjcWinOdds(request: {

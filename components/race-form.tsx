@@ -7,19 +7,27 @@ import { formatCoins } from "@/lib/format";
 import { getTranslations, interpolate, type Language } from "@/lib/i18n";
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
 import {
+  buildQuinellaOddsMatrix,
+  buildQuinellaQuotedOddsMap,
   calculatePotentialPayoutForRunner,
+  calculateQuinellaPayout,
   calculateWinPlaceComboPayout,
   canOfferPlaceBet,
+  createEmptyQuinellaDraft,
   getBasketTotals,
   getBetLineCount,
   getBetLineTypes,
   getComboPendingDecision,
   getMobileBetModeTransition,
+  getQuinellaPendingDecision,
   getSingleBetTapDecision,
   getRunnerLockedPlaceOdds,
   getRunnerLockedWinOdds,
   parseStakeInput,
+  selectQuinellaBanker,
+  toggleQuinellaLeg,
   type MobileBetMode,
+  type QuinellaDraft,
   type RaceBetType,
 } from "@/lib/race-betting-ui";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
@@ -35,6 +43,8 @@ type BasketItem = {
   horseName: string;
   placeHorseNo?: string;
   placeHorseName?: string;
+  selectedLegHorseNos?: string[];
+  quotedQuinellaOdds?: Record<string, string>;
   betType: RaceBetType;
   quotedWinOdds: string;
   quotedPlaceOdds: string;
@@ -105,6 +115,10 @@ function getBetTypeLabel(betType: RaceBetType) {
     return "Win + Place Combo";
   }
 
+  if (betType === "QUINELLA") {
+    return "Quinella";
+  }
+
   return "Win - Place";
 }
 
@@ -137,6 +151,10 @@ export function RaceForm({
   const [comboPlaceHorseNo, setComboPlaceHorseNo] = useState<string | null>(
     null,
   );
+  const [quinellaDraft, setQuinellaDraft] = useState<QuinellaDraft>(
+    createEmptyQuinellaDraft(),
+  );
+  const [quinellaOddsOpen, setQuinellaOddsOpen] = useState(false);
   const previousMobileBetModeRef = useRef(mobileBetMode);
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
   const basketTotals = getBasketTotals(basketItems);
@@ -145,15 +163,22 @@ export function RaceForm({
   const selectionMode: SelectionMode =
     mobileBetMode === "combo-wp" ? "combo" : "single";
   const quinellaMode = mobileBetMode === "quinella";
+  const quinellaAvailable = raceCard.quinellaOddsAvailable;
+  const quinellaUnavailableMessage =
+    "quinellaOddsUnavailable" in t
+      ? t.quinellaOddsUnavailable
+      : "Quinella odds are unavailable right now.";
   const basketPayload = useMemo(
     () =>
       JSON.stringify(
         basketItems.map((item) => ({
           selectedHorseNo: item.horseNo,
           selectedPlaceHorseNo: item.placeHorseNo ?? "",
+          selectedLegHorseNos: item.selectedLegHorseNos ?? [],
           betType: item.betType,
           quotedWinOdds: item.quotedWinOdds,
           quotedPlaceOdds: item.quotedPlaceOdds,
+          quotedQuinellaOdds: item.quotedQuinellaOdds ?? {},
           unitBetAmount: item.unitBetAmount,
         })),
       ),
@@ -161,6 +186,18 @@ export function RaceForm({
   );
   const potentialPayout = basketItems.reduce((total, item) => {
     const runner = getRunnerByHorseNo(raceCard.runners, item.horseNo);
+    if (item.betType === "QUINELLA") {
+      return (
+        total +
+        calculateQuinellaPayout(
+          item.unitBetAmount,
+          raceCard.quinellaOdds,
+          item.horseNo,
+          item.selectedLegHorseNos ?? [],
+        )
+      );
+    }
+
     if (item.betType === "WIN_PLACE_COMBO") {
       return (
         total +
@@ -193,6 +230,23 @@ export function RaceForm({
         return false;
       }
 
+      if (item.betType === "QUINELLA") {
+        return (
+          Boolean(item.selectedLegHorseNos?.length) &&
+          (item.selectedLegHorseNos ?? []).every(
+            (legHorseNo) =>
+              legHorseNo !== runner.horseNo &&
+              Boolean(
+                raceCard.quinellaOdds.find(
+                  (entry) =>
+                    [entry.horseNoA, entry.horseNoB].includes(runner.horseNo) &&
+                    [entry.horseNoA, entry.horseNoB].includes(legHorseNo),
+                ),
+              ),
+          )
+        );
+      }
+
       if (item.betType === "WIN_PLACE_COMBO") {
         const placeRunner = item.placeHorseNo
           ? getRunnerByHorseNo(raceCard.runners, item.placeHorseNo)
@@ -210,6 +264,21 @@ export function RaceForm({
           : getRunnerLockedPlaceOdds(runner) !== null,
       );
     });
+  const quinellaMatrix = useMemo(
+    () =>
+      buildQuinellaOddsMatrix(
+        raceCard.runners,
+        raceCard.quinellaOdds,
+        quinellaDraft.bankerHorseNo,
+        quinellaDraft.legHorseNos,
+      ),
+    [
+      quinellaDraft.bankerHorseNo,
+      quinellaDraft.legHorseNos,
+      raceCard.quinellaOdds,
+      raceCard.runners,
+    ],
+  );
 
   useEffect(() => {
     function syncBetSlipToHash() {
@@ -260,7 +329,25 @@ export function RaceForm({
     }
 
     previousMobileBetModeRef.current = mobileBetMode;
+    if (mobileBetMode !== "quinella") {
+      setQuinellaDraft(createEmptyQuinellaDraft());
+      setQuinellaOddsOpen(false);
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
+      );
+    }
   }, [mobileBetMode]);
+
+  useEffect(() => {
+    if (quinellaAvailable) {
+      return;
+    }
+
+    setQuinellaDraft(createEmptyQuinellaDraft());
+    setPendingBet((currentPendingBet) =>
+      currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
+    );
+  }, [quinellaAvailable]);
 
   function openBetSlipPanel() {
     setBetSlipOpen(true);
@@ -392,6 +479,65 @@ export function RaceForm({
     });
   }
 
+  function syncQuinellaPendingBet(nextDraft: QuinellaDraft) {
+    const quotedOdds = buildQuinellaQuotedOddsMap(
+      raceCard.quinellaOdds,
+      nextDraft.bankerHorseNo,
+      nextDraft.legHorseNos,
+    );
+    const pendingDecision = getQuinellaPendingDecision(
+      pendingBet?.betType,
+      nextDraft,
+      Boolean(quotedOdds),
+    );
+
+    if (pendingDecision === "clear-pending") {
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
+      );
+      return;
+    }
+
+    if (pendingDecision === "keep-pending" || !nextDraft.bankerHorseNo || !quotedOdds) {
+      return;
+    }
+
+    const bankerRunner = getRunnerByHorseNo(raceCard.runners, nextDraft.bankerHorseNo);
+    if (!bankerRunner) {
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
+      );
+      return;
+    }
+
+    const legRunners = nextDraft.legHorseNos
+      .map((legHorseNo) => getRunnerByHorseNo(raceCard.runners, legHorseNo))
+      .filter((runner): runner is HkjcRunner => runner !== null);
+    if (legRunners.length !== nextDraft.legHorseNos.length) {
+      setPendingBet((currentPendingBet) =>
+        currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
+      );
+      return;
+    }
+
+    setPendingBet({
+      id: getBasketItemId(
+        bankerRunner.horseNo,
+        "QUINELLA",
+        nextDraft.legHorseNos.join("|"),
+      ),
+      horseNo: bankerRunner.horseNo,
+      horseName: bankerRunner.name,
+      selectedLegHorseNos: nextDraft.legHorseNos,
+      quotedQuinellaOdds: quotedOdds,
+      betType: "QUINELLA",
+      quotedWinOdds: "",
+      quotedPlaceOdds: "",
+      unitBetAmount: DEFAULT_UNIT_BET,
+      raceNo: raceCard.raceNo,
+    });
+  }
+
   function selectComboWin(runner: HkjcRunner) {
     const nextPlaceHorseNo =
       comboPlaceHorseNo === runner.horseNo ? null : comboPlaceHorseNo;
@@ -399,6 +545,26 @@ export function RaceForm({
     setComboWinHorseNo(nextWinHorseNo);
     setComboPlaceHorseNo(nextPlaceHorseNo);
     syncComboPendingBet(nextWinHorseNo, nextPlaceHorseNo);
+  }
+
+  function handleSelectQuinellaBanker(runner: HkjcRunner) {
+    if (!quinellaAvailable) {
+      return;
+    }
+
+    const nextDraft = selectQuinellaBanker(quinellaDraft, runner.horseNo);
+    setQuinellaDraft(nextDraft);
+    syncQuinellaPendingBet(nextDraft);
+  }
+
+  function handleToggleQuinellaLeg(runner: HkjcRunner) {
+    if (!quinellaAvailable) {
+      return;
+    }
+
+    const nextDraft = toggleQuinellaLeg(quinellaDraft, runner.horseNo);
+    setQuinellaDraft(nextDraft);
+    syncQuinellaPendingBet(nextDraft);
   }
 
   function selectComboPlace(runner: HkjcRunner) {
@@ -416,6 +582,12 @@ export function RaceForm({
 
   function clearBasketItems() {
     setBasketItems([]);
+  }
+
+  function clearQuinellaDraftState() {
+    const clearedDraft = createEmptyQuinellaDraft();
+    setQuinellaDraft(clearedDraft);
+    syncQuinellaPendingBet(clearedDraft);
   }
 
   function updateBasketStake(id: string, unitBetAmount: string) {
@@ -500,9 +672,107 @@ export function RaceForm({
                 ) : null}
               </div>
               {quinellaMode ? (
-                <p className="message quinella-mode-note">
-                  {t.quinellaComingSoon}
-                </p>
+                <div className="quinella-mode-shell">
+                  <div className="quinella-draft">
+                    <span>Banker: {quinellaDraft.bankerHorseNo ?? "-"}</span>
+                    <span>
+                      Legs:{" "}
+                      {quinellaDraft.legHorseNos.length
+                        ? quinellaDraft.legHorseNos.join(", ")
+                        : "-"}
+                    </span>
+                    <span>
+                      {t.noOfBets}: {quinellaDraft.legHorseNos.length}
+                    </span>
+                    <button
+                      onClick={clearQuinellaDraftState}
+                      type="button"
+                    >
+                      {t.clear}
+                    </button>
+                  </div>
+                  <div className="quinella-odds-panel">
+                    <button
+                      aria-expanded={quinellaOddsOpen}
+                      className="quinella-odds-toggle"
+                      onClick={() => setQuinellaOddsOpen((open) => !open)}
+                      type="button"
+                    >
+                      <strong>Odds</strong>
+                      <span aria-hidden="true">
+                        {quinellaOddsOpen ? <FaChevronUp /> : <FaChevronDown />}
+                      </span>
+                    </button>
+                    {quinellaOddsOpen ? (
+                      <div className="quinella-matrix-wrap">
+                        {quinellaAvailable ? (
+                          <table className="quinella-matrix">
+                            <thead>
+                              <tr>
+                                <th>QIN</th>
+                                {quinellaMatrix.horseNos.map((horseNo) => (
+                                  <th
+                                    className={
+                                      quinellaDraft.bankerHorseNo === horseNo
+                                        ? "is-banker"
+                                        : quinellaDraft.legHorseNos.includes(
+                                              horseNo,
+                                            )
+                                          ? "is-leg"
+                                          : ""
+                                    }
+                                    key={horseNo}
+                                  >
+                                    {horseNo}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {quinellaMatrix.rows.map((row) => (
+                                <tr key={row.horseNo}>
+                                  <th
+                                    className={
+                                      quinellaDraft.bankerHorseNo === row.horseNo
+                                        ? "is-banker"
+                                        : quinellaDraft.legHorseNos.includes(
+                                              row.horseNo,
+                                            )
+                                          ? "is-leg"
+                                          : ""
+                                    }
+                                  >
+                                    {row.horseNo}
+                                  </th>
+                                  {row.cells.map((cell) => (
+                                    <td
+                                      className={[
+                                        cell.isHighlighted ? "is-highlighted" : "",
+                                        cell.isIntersection
+                                          ? "is-intersection"
+                                          : "",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                      key={`${row.horseNo}-${cell.horseNo}`}
+                                    >
+                                      {cell.displayOdds ?? ""}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {!quinellaAvailable ? (
+                      <p className="message quinella-mode-note">
+                        {quinellaUnavailableMessage}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
               {raceCard.runners.map((runner) => {
                 const expanded = expandedHorseNo === runner.horseNo;
@@ -512,8 +782,12 @@ export function RaceForm({
                 ].some(
                   (item) =>
                     item.horseNo === runner.horseNo ||
-                    item.placeHorseNo === runner.horseNo,
-                );
+                    item.placeHorseNo === runner.horseNo ||
+                    item.selectedLegHorseNos?.includes(runner.horseNo),
+                ) ||
+                (quinellaMode &&
+                  (quinellaDraft.bankerHorseNo === runner.horseNo ||
+                    quinellaDraft.legHorseNos.includes(runner.horseNo)));
                 const winSelected =
                   pendingBet?.id === getBasketItemId(runner.horseNo, "WIN") ||
                   basketItems.some(
@@ -545,6 +819,11 @@ export function RaceForm({
                 const comboPlaceSelected =
                   selectionMode === "combo" &&
                   comboPlaceHorseNo === runner.horseNo;
+                const quinellaBankerSelected =
+                  quinellaMode && quinellaDraft.bankerHorseNo === runner.horseNo;
+                const quinellaLegSelected =
+                  quinellaMode &&
+                  quinellaDraft.legHorseNos.includes(runner.horseNo);
                 const extraStats = [
                   { label: t.weight, value: runner.weight },
                   { label: t.gear, value: runner.gear },
@@ -597,76 +876,105 @@ export function RaceForm({
                           <span className="runner-hot">{t.hotFavourite}</span>
                         ) : null}
                       </span>
-                      <span className="runner-odds-grid">
-                        <button
-                          aria-pressed={
-                            selectionMode === "combo"
-                              ? comboWinSelected
-                              : winSelected
-                          }
-                          className={
-                            (
-                              selectionMode === "combo"
-                                ? comboWinSelected
-                                : winSelected
-                            )
-                              ? "active"
-                              : ""
-                          }
-                          disabled={quinellaMode || winDisabled}
-                          onClick={() =>
-                            selectionMode === "combo"
-                              ? selectComboWin(runner)
-                              : addBasketItem(runner, "WIN")
-                          }
-                          type="button"
-                        >
-                          <b>W</b>
-                          {runner.oddsAvailable && runner.winOdds
-                            ? runner.winOdds
-                            : "---"}
-                        </button>
-                        <button
-                          aria-pressed={
-                            selectionMode === "combo"
-                              ? comboPlaceSelected
-                              : placeSelected
-                          }
-                          className={
-                            (
-                              selectionMode === "combo"
-                                ? comboPlaceSelected
-                                : placeSelected
-                            )
-                              ? "active"
-                              : ""
-                          }
-                          disabled={quinellaMode || placeDisabled}
-                          onClick={() =>
-                            selectionMode === "combo"
-                              ? selectComboPlace(runner)
-                              : addBasketItem(runner, "PLACE")
-                          }
-                          type="button"
-                        >
-                          <b>P</b>
-                          {runner.placeOddsAvailable && runner.placeOdds
-                            ? runner.placeOdds
-                            : "---"}
-                        </button>
-                        <button
-                          aria-pressed={winPlaceSelected}
-                          className={winPlaceSelected ? "active" : ""}
-                          disabled={
-                            quinellaMode ||
-                            selectionMode === "combo" ||
-                            winPlaceDisabled
-                          }
-                          onClick={() => addBasketItem(runner, "WIN_PLACE")}
-                          type="button"
-                        >
-                          <b>W&P</b>
-                        </button>
+                      <span
+                        className={`runner-odds-grid ${quinellaMode ? "is-quinella-grid" : ""}`}
+                      >
+                        {quinellaMode ? (
+                          <>
+                            <button
+                              aria-pressed={quinellaBankerSelected}
+                              className={quinellaBankerSelected ? "active" : ""}
+                              disabled={!quinellaAvailable}
+                              onClick={() => handleSelectQuinellaBanker(runner)}
+                              type="button"
+                            >
+                              <b>Banker</b>
+                            </button>
+                            <button
+                              aria-pressed={quinellaLegSelected}
+                              className={quinellaLegSelected ? "active" : ""}
+                              disabled={
+                                !quinellaAvailable ||
+                                (quinellaDraft.legHorseNos.length >= 5 &&
+                                  !quinellaLegSelected)
+                              }
+                              onClick={() => handleToggleQuinellaLeg(runner)}
+                              type="button"
+                            >
+                              <b>Leg</b>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              aria-pressed={
+                                selectionMode === "combo"
+                                  ? comboWinSelected
+                                  : winSelected
+                              }
+                              className={
+                                (
+                                  selectionMode === "combo"
+                                    ? comboWinSelected
+                                    : winSelected
+                                )
+                                  ? "active"
+                                  : ""
+                              }
+                              disabled={winDisabled}
+                              onClick={() =>
+                                selectionMode === "combo"
+                                  ? selectComboWin(runner)
+                                  : addBasketItem(runner, "WIN")
+                              }
+                              type="button"
+                            >
+                              <b>W</b>
+                              {runner.oddsAvailable && runner.winOdds
+                                ? runner.winOdds
+                                : "---"}
+                            </button>
+                            <button
+                              aria-pressed={
+                                selectionMode === "combo"
+                                  ? comboPlaceSelected
+                                  : placeSelected
+                              }
+                              className={
+                                (
+                                  selectionMode === "combo"
+                                    ? comboPlaceSelected
+                                    : placeSelected
+                                )
+                                  ? "active"
+                                  : ""
+                              }
+                              disabled={placeDisabled}
+                              onClick={() =>
+                                selectionMode === "combo"
+                                  ? selectComboPlace(runner)
+                                  : addBasketItem(runner, "PLACE")
+                              }
+                              type="button"
+                            >
+                              <b>P</b>
+                              {runner.placeOddsAvailable && runner.placeOdds
+                                ? runner.placeOdds
+                                : "---"}
+                            </button>
+                            <button
+                              aria-pressed={winPlaceSelected}
+                              className={winPlaceSelected ? "active" : ""}
+                              disabled={
+                                selectionMode === "combo" || winPlaceDisabled
+                              }
+                              onClick={() => addBasketItem(runner, "WIN_PLACE")}
+                              type="button"
+                            >
+                              <b>W&P</b>
+                            </button>
+                          </>
+                        )}
                       </span>
                       <button
                         aria-label={expanded ? t.hideStats : t.moreStats}
@@ -730,7 +1038,11 @@ export function RaceForm({
                   <div>
                     <span>
                       {t.noOfBets}:{" "}
-                      <strong>{getBetLineCount(pendingBet.betType)}</strong>
+                      <strong>
+                        {getBetLineCount(pendingBet.betType, {
+                          quinellaLegHorseNos: pendingBet.selectedLegHorseNos,
+                        })}
+                      </strong>
                     </span>
                     <strong>
                       {t.race} {pendingBet.raceNo} <span>|</span>{" "}
@@ -740,6 +1052,8 @@ export function RaceForm({
                       {pendingBet.horseNo}
                       {pendingBet.placeHorseNo
                         ? ` + ${pendingBet.placeHorseNo}`
+                        : pendingBet.selectedLegHorseNos?.length
+                          ? ` > ${pendingBet.selectedLegHorseNos.join(" + ")}`
                         : ""}
                     </p>
                   </div>
@@ -815,7 +1129,13 @@ export function RaceForm({
                           .slice(0, 3)
                           .map(
                             (item) =>
-                              `${item.horseNo}${item.placeHorseNo ? `+${item.placeHorseNo}` : ""} ${getBetTypeLabel(item.betType)}`,
+                              `${item.horseNo}${
+                                item.placeHorseNo
+                                  ? `+${item.placeHorseNo}`
+                                  : item.selectedLegHorseNos?.length
+                                    ? `>${item.selectedLegHorseNos.join("+")}`
+                                    : ""
+                              } ${getBetTypeLabel(item.betType)}`,
                           )
                           .join(" / ")
                       : t.emptyBetSlip}
@@ -851,7 +1171,9 @@ export function RaceForm({
                         raceCard.runners,
                         item.horseNo,
                       );
-                      const lineCount = getBetLineCount(item.betType);
+                      const lineCount = getBetLineCount(item.betType, {
+                        quinellaLegHorseNos: item.selectedLegHorseNos,
+                      });
                       const parsedStake = parseStakeInput(item.unitBetAmount);
                       const lineTotal =
                         parsedStake === null ? 0 : parsedStake * lineCount;
@@ -879,6 +1201,12 @@ export function RaceForm({
                             <strong>
                               {item.horseNo} {item.horseName}
                             </strong>
+                            {item.betType === "QUINELLA" &&
+                            item.selectedLegHorseNos?.length ? (
+                              <strong>
+                                Legs: {item.selectedLegHorseNos.join(", ")}
+                              </strong>
+                            ) : null}
                             {item.betType === "WIN_PLACE_COMBO" &&
                             item.placeHorseNo ? (
                               <strong>
@@ -912,7 +1240,17 @@ export function RaceForm({
                             </strong>
                             {runner ? (
                               <span className="muted">
-                                {item.betType === "WIN_PLACE_COMBO"
+                                {item.betType === "QUINELLA"
+                                  ? (item.selectedLegHorseNos ?? [])
+                                      .map((legHorseNo) => {
+                                        const odds =
+                                          item.quotedQuinellaOdds?.[
+                                            legHorseNo
+                                          ] ?? "-";
+                                        return `Q ${runner.horseNo}-${legHorseNo} ${odds}x`;
+                                      })
+                                      .join(" / ")
+                                  : item.betType === "WIN_PLACE_COMBO"
                                   ? `W ${getRunnerLockedWinOdds(runner) ?? "-"}x / P ${getRunnerLockedPlaceOdds(placeRunner) ?? "-"}x`
                                   : getBetLineTypes(item.betType)
                                       .map((lineType) => {
