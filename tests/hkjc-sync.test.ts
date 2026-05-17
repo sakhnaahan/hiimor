@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildLocalMainRaceCard } from "@/lib/hkjc-racecard";
+import { buildLocalMainRaceCard, hydrateRaceCardOdds } from "@/lib/hkjc-racecard";
 import { canFinalizeHkjcRace, extractActiveMainHkjcMeetings } from "@/lib/hkjc-sync";
 
 test("active GraphQL ST/HV meetings expand into syncable race numbers only", () => {
@@ -82,4 +82,123 @@ test("fallback racecard builder can preload all races for the next ST/HV meeting
     { raceNo: 2, raceDate: "2026/05/24", racecourseCode: "ST" },
     { raceNo: 3, raceDate: "2026/05/24", racecourseCode: "ST" },
   ]);
+});
+
+test("stored racecard shells hydrate live official Quinella odds", async () => {
+  const raceCard = buildLocalMainRaceCard(
+    {
+      raceDate: "2026-05-24",
+      racecourseCode: "ST",
+      raceCount: 1,
+    },
+    { raceNo: 1 },
+  );
+  raceCard.quinellaOdds = [];
+  raceCard.quinellaOddsAvailable = false;
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { variables?: { oddsTypes?: string[] } };
+    const oddsTypes = body.variables?.oddsTypes ?? [];
+
+    return Response.json({
+      data: {
+        raceMeetings: [
+          {
+            pmPools: oddsTypes.includes("QIN")
+              ? [
+                  {
+                    oddsType: "QIN",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:02",
+                    oddsNodes: [{ combString: "06,08", oddsValue: "14", hotFavourite: true }],
+                  },
+                ]
+              : [
+                  {
+                    oddsType: "WIN",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:01",
+                    oddsNodes: [{ combString: "06", oddsValue: "4.8", hotFavourite: false }],
+                  },
+                  {
+                    oddsType: "PLA",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:01",
+                    oddsNodes: [{ combString: "06", oddsValue: "1.7", hotFavourite: false }],
+                  },
+                ],
+          },
+        ],
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const hydratedRaceCard = await hydrateRaceCardOdds(raceCard);
+
+    assert.equal(hydratedRaceCard.quinellaOddsAvailable, true);
+    assert.equal(hydratedRaceCard.quinellaOddsLastUpdateTime, "10:02");
+    assert.deepEqual(hydratedRaceCard.quinellaOdds[0], {
+      horseNoA: "6",
+      horseNoB: "8",
+      odds: "14",
+      poolStatus: "START_SELL",
+      sellStatus: "START_SELL",
+      lastUpdateTime: "10:02",
+      inferred: false,
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("stored racecard shells stay Quinella unavailable without official QIN odds", async () => {
+  const raceCard = buildLocalMainRaceCard(
+    {
+      raceDate: "2026-05-24",
+      racecourseCode: "ST",
+      raceCount: 1,
+    },
+    { raceNo: 1 },
+  );
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { variables?: { oddsTypes?: string[] } };
+    const oddsTypes = body.variables?.oddsTypes ?? [];
+
+    return Response.json({
+      data: {
+        raceMeetings: [
+          {
+            pmPools: oddsTypes.includes("QIN")
+              ? []
+              : [
+                  {
+                    oddsType: "WIN",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:01",
+                    oddsNodes: [{ combString: "06", oddsValue: "4.8", hotFavourite: false }],
+                  },
+                ],
+          },
+        ],
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const hydratedRaceCard = await hydrateRaceCardOdds(raceCard);
+
+    assert.deepEqual(hydratedRaceCard.quinellaOdds, []);
+    assert.equal(hydratedRaceCard.quinellaOddsAvailable, false);
+    assert.equal(hydratedRaceCard.quinellaOddsLastUpdateTime, "");
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });

@@ -301,7 +301,10 @@ test("HKJC Quinella odds parser normalizes pair combinations", () => {
               status: "START_SELL",
               sellStatus: "START_SELL",
               lastUpdateTime: "10:02",
-              oddsNodes: [{ combString: "08-05", oddsValue: "16", hotFavourite: false }],
+              oddsNodes: [
+                { combString: "08-05", oddsValue: "16", hotFavourite: false },
+                { combString: "06,08", oddsValue: "14", hotFavourite: true },
+              ],
             },
           ],
         },
@@ -313,6 +316,15 @@ test("HKJC Quinella odds parser normalizes pair combinations", () => {
     horseNoA: "5",
     horseNoB: "8",
     odds: "16",
+    poolStatus: "START_SELL",
+    sellStatus: "START_SELL",
+    lastUpdateTime: "10:02",
+    inferred: false,
+  });
+  assert.deepEqual(odds[1], {
+    horseNoA: "6",
+    horseNoB: "8",
+    odds: "14",
     poolStatus: "START_SELL",
     sellStatus: "START_SELL",
     lastUpdateTime: "10:02",

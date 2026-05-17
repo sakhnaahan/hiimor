@@ -1063,7 +1063,7 @@ function inferSnapshotStatus(raceCard: HkjcRaceCard) {
 export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
   const stored = await readStoredHkjcRaceCard(request).catch(() => null);
   if (stored?.isFresh) {
-    return { ok: true, raceCard: stored.raceCard };
+    return { ok: true, raceCard: await hydrateRaceCardOdds(stored.raceCard) };
   }
 
   const live = await getLiveHkjcUpcomingRaceCard(request);
@@ -1086,7 +1086,7 @@ export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promis
   return live;
 }
 
-async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
+export async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
   if (!raceCard.raceDate || !raceCard.racecourseCode) {
     return raceCard;
   }
