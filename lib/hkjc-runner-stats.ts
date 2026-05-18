@@ -1,10 +1,40 @@
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
+import type { Language } from "@/lib/i18n";
 
 export type RunnerStatSignalTone = "positive" | "warning" | "neutral";
+type RunnerStatSignalKey =
+  | "insideDraw"
+  | "wideDraw"
+  | "lightWeight"
+  | "topWeight"
+  | "firstTimeGear"
+  | "limitedForm"
+  | "goodRecentForm";
 
 export type RunnerStatSignal = {
   label: string;
   tone: RunnerStatSignalTone;
+};
+
+const RUNNER_SIGNAL_LABELS: Record<Language, Record<RunnerStatSignalKey, string>> = {
+  en: {
+    insideDraw: "Inside draw",
+    wideDraw: "Wide draw",
+    lightWeight: "Light weight",
+    topWeight: "Top weight",
+    firstTimeGear: "First-time gear",
+    limitedForm: "Limited form",
+    goodRecentForm: "Good recent form",
+  },
+  mn: {
+    insideDraw: "Дотор сугалаа",
+    wideDraw: "Гадна сугалаа",
+    lightWeight: "Хөнгөн жин",
+    topWeight: "Их жин",
+    firstTimeGear: "Анхны тоноглол",
+    limitedForm: "Форм дутуу",
+    goodRecentForm: "Сүүлийн форм сайн",
+  },
 };
 
 function parseNumber(value: string) {
@@ -41,8 +71,10 @@ function hasGoodRecentForm(last6Runs: string) {
 export function getRunnerStatSignals(
   raceCard: HkjcRaceCard,
   runner: HkjcRunner,
+  language: Language = "en",
 ): RunnerStatSignal[] {
   const signals: RunnerStatSignal[] = [];
+  const labels = RUNNER_SIGNAL_LABELS[language];
   const distanceMeters = parseDistanceMeters(raceCard.distance);
   const draw = parseNumber(runner.draw);
   const draws = getRunnerNumbers(raceCard.runners, "draw");
@@ -50,7 +82,7 @@ export function getRunnerStatSignals(
   const isShortRace = distanceMeters !== null && distanceMeters <= 1200;
 
   if (isShortRace && draw !== null && draw >= 1 && draw <= 3) {
-    signals.push({ label: "Inside draw", tone: "positive" });
+    signals.push({ label: labels.insideDraw, tone: "positive" });
   } else if (
     isShortRace &&
     draw !== null &&
@@ -58,7 +90,7 @@ export function getRunnerStatSignals(
     maxDraw >= 8 &&
     draw >= maxDraw - 2
   ) {
-    signals.push({ label: "Wide draw", tone: "warning" });
+    signals.push({ label: labels.wideDraw, tone: "warning" });
   }
 
   const weight = parseNumber(runner.weight);
@@ -73,22 +105,22 @@ export function getRunnerStatSignals(
     minWeight !== maxWeight
   ) {
     if (weight === minWeight) {
-      signals.push({ label: "Light weight", tone: "positive" });
+      signals.push({ label: labels.lightWeight, tone: "positive" });
     }
 
     if (weight === maxWeight) {
-      signals.push({ label: "Top weight", tone: "neutral" });
+      signals.push({ label: labels.topWeight, tone: "neutral" });
     }
   }
 
   if (hasFirstTimeGear(runner.gear)) {
-    signals.push({ label: "First-time gear", tone: "neutral" });
+    signals.push({ label: labels.firstTimeGear, tone: "neutral" });
   }
 
   if (!runner.last6Runs) {
-    signals.push({ label: "Limited form", tone: "neutral" });
+    signals.push({ label: labels.limitedForm, tone: "neutral" });
   } else if (hasGoodRecentForm(runner.last6Runs)) {
-    signals.push({ label: "Good recent form", tone: "positive" });
+    signals.push({ label: labels.goodRecentForm, tone: "positive" });
   }
 
   return signals;

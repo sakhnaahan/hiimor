@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { runRaceBasketAction } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
-import { formatCoins } from "@/lib/format";
+import { formatCoins, formatRunnerAssignedWeight } from "@/lib/format";
 import { getTranslations, interpolate, type Language } from "@/lib/i18n";
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
 import {
@@ -122,6 +122,22 @@ function getBetTypeLabel(betType: RaceBetType) {
   return "Win - Place";
 }
 
+function getRunnerBetButtonLabels(language: Language) {
+  if (language === "mn") {
+    return {
+      win: "1",
+      place: "2",
+      winPlace: "1&2",
+    };
+  }
+
+  return {
+    win: "W",
+    place: "P",
+    winPlace: "W&P",
+  };
+}
+
 function getRunnerByHorseNo(runners: readonly HkjcRunner[], horseNo: string) {
   return runners.find((runner) => runner.horseNo === horseNo) ?? null;
 }
@@ -160,6 +176,7 @@ export function RaceForm({
   const basketTotals = getBasketTotals(basketItems);
   const router = useRouter();
   const visibleBetSlipItems = basketItems;
+  const runnerBetButtonLabels = getRunnerBetButtonLabels(language);
   const selectionMode: SelectionMode =
     mobileBetMode === "combo-wp" ? "combo" : "single";
   const quinellaMode = mobileBetMode === "quinella";
@@ -167,7 +184,7 @@ export function RaceForm({
   const quinellaUnavailableMessage =
     "quinellaOddsUnavailable" in t
       ? t.quinellaOddsUnavailable
-      : "Quinella odds are unavailable right now.";
+      : "Мэдээлэл түр байхгүй байна.";
   const basketPayload = useMemo(
     () =>
       JSON.stringify(
@@ -654,43 +671,9 @@ export function RaceForm({
                     {t.comboWp}
                   </button>
                 </div>
-                {selectionMode === "combo" ? (
-                  <div className="combo-draft">
-                    <span>W: {comboWinHorseNo ?? "-"}</span>
-                    <span>P: {comboPlaceHorseNo ?? "-"}</span>
-                    <button
-                      onClick={() => {
-                        setComboWinHorseNo(null);
-                        setComboPlaceHorseNo(null);
-                        syncComboPendingBet(null, null);
-                      }}
-                      type="button"
-                    >
-                      {t.clear}
-                    </button>
-                  </div>
-                ) : null}
               </div>
               {quinellaMode ? (
                 <div className="quinella-mode-shell">
-                  <div className="quinella-draft">
-                    <span>Banker: {quinellaDraft.bankerHorseNo ?? "-"}</span>
-                    <span>
-                      Legs:{" "}
-                      {quinellaDraft.legHorseNos.length
-                        ? quinellaDraft.legHorseNos.join(", ")
-                        : "-"}
-                    </span>
-                    <span>
-                      {t.noOfBets}: {quinellaDraft.legHorseNos.length}
-                    </span>
-                    <button
-                      onClick={clearQuinellaDraftState}
-                      type="button"
-                    >
-                      {t.clear}
-                    </button>
-                  </div>
                   <div className="quinella-odds-panel">
                     <button
                       aria-expanded={quinellaOddsOpen}
@@ -824,8 +807,12 @@ export function RaceForm({
                 const quinellaLegSelected =
                   quinellaMode &&
                   quinellaDraft.legHorseNos.includes(runner.horseNo);
+                const runnerAssignedWeight = formatRunnerAssignedWeight(
+                  runner.weight,
+                  language,
+                );
                 const extraStats = [
-                  { label: t.weight, value: runner.weight },
+                  { label: t.weight, value: runnerAssignedWeight },
                   { label: t.gear, value: runner.gear },
                   { label: t.last6, value: runner.last6Runs },
                   { label: t.horseWeight, value: runner.horseWeight },
@@ -835,7 +822,7 @@ export function RaceForm({
                   { label: t.overWeight, value: runner.overWeight },
                 ];
                 const hasExtraStats = extraStats.some((stat) => stat.value);
-                const signals = getRunnerStatSignals(raceCard, runner);
+                const signals = getRunnerStatSignals(raceCard, runner, language);
                 const statsId = `runner-stats-${runner.horseNo}`;
 
                 return (
@@ -863,10 +850,10 @@ export function RaceForm({
                         <strong>{runner.name}</strong>
                         <span className="runner-people">
                           <span>
-                            <b>J</b> {runner.jockey || "-"}
+                            <b>У</b> {runner.jockey || "-"}
                           </span>
                           <span>
-                            <b>T</b> {runner.trainer || "-"}
+                            <b>Уя</b> {runner.trainer || "-"}
                           </span>
                           <span>
                             <b>{t.draw}</b> {runner.draw || "-"}
@@ -882,15 +869,17 @@ export function RaceForm({
                         {quinellaMode ? (
                           <>
                             <button
+                              aria-label="Banker"
                               aria-pressed={quinellaBankerSelected}
                               className={quinellaBankerSelected ? "active" : ""}
                               disabled={!quinellaAvailable}
                               onClick={() => handleSelectQuinellaBanker(runner)}
                               type="button"
                             >
-                              <b>Banker</b>
+                              <b>1</b>
                             </button>
                             <button
+                              aria-label="Leg"
                               aria-pressed={quinellaLegSelected}
                               className={quinellaLegSelected ? "active" : ""}
                               disabled={
@@ -901,7 +890,7 @@ export function RaceForm({
                               onClick={() => handleToggleQuinellaLeg(runner)}
                               type="button"
                             >
-                              <b>Leg</b>
+                              <b>2</b>
                             </button>
                           </>
                         ) : (
@@ -929,7 +918,7 @@ export function RaceForm({
                               }
                               type="button"
                             >
-                              <b>W</b>
+                              <b>{runnerBetButtonLabels.win}</b>
                               {runner.oddsAvailable && runner.winOdds
                                 ? runner.winOdds
                                 : "---"}
@@ -957,7 +946,7 @@ export function RaceForm({
                               }
                               type="button"
                             >
-                              <b>P</b>
+                              <b>{runnerBetButtonLabels.place}</b>
                               {runner.placeOddsAvailable && runner.placeOdds
                                 ? runner.placeOdds
                                 : "---"}
@@ -971,7 +960,7 @@ export function RaceForm({
                               onClick={() => addBasketItem(runner, "WIN_PLACE")}
                               type="button"
                             >
-                              <b>W&P</b>
+                              <b>{runnerBetButtonLabels.winPlace}</b>
                             </button>
                           </>
                         )}

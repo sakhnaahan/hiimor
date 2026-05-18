@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
+import type { Language } from "@/lib/i18n";
 import { getRunnerStatSignals } from "@/lib/hkjc-runner-stats";
 
 function runner(overrides: Partial<HkjcRunner>): HkjcRunner {
@@ -53,8 +54,14 @@ function raceCard(runners: HkjcRunner[], overrides: Partial<HkjcRaceCard> = {}):
   };
 }
 
-function signalLabels(card: HkjcRaceCard, selectedRunner: HkjcRunner) {
-  return getRunnerStatSignals(card, selectedRunner).map((signal) => signal.label);
+function signalLabels(
+  card: HkjcRaceCard,
+  selectedRunner: HkjcRunner,
+  language: Language = "en",
+) {
+  return getRunnerStatSignals(card, selectedRunner, language).map(
+    (signal) => signal.label,
+  );
 }
 
 test("short race marks inside draw", () => {
@@ -99,4 +106,16 @@ test("light and top carried weights are detected within a race", () => {
 
   assert.ok(signalLabels(card, lightRunner).includes("Light weight"));
   assert.ok(signalLabels(card, topRunner).includes("Top weight"));
+});
+
+test("mongolian labels are returned for runner signals", () => {
+  const selectedRunner = runner({ draw: "2", weight: "133", last6Runs: "5/3/8/10" });
+  const otherRunner = runner({ horseNo: "2", draw: "9", weight: "121" });
+  const card = raceCard([selectedRunner, otherRunner]);
+
+  const labels = signalLabels(card, selectedRunner, "mn");
+
+  assert.ok(labels.includes("Дотор сугалаа"));
+  assert.ok(labels.includes("Их жин"));
+  assert.ok(labels.includes("Сүүлийн форм сайн"));
 });
