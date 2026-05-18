@@ -1,0 +1,6 @@
+[build]
+buildCommand = "prisma generate && next build"
+
+[deploy]
+startCommand = "npm run start"
+preDeployCommand = "prisma migrate deploy"
