@@ -288,7 +288,7 @@ test("HKJC GraphQL parser returns null when only overseas meetings exist", () =>
   assert.equal(raceCard, null);
 });
 
-test("live GraphQL racecards are enriched with runner age and sex from HKJC HTML", async () => {
+test("live GraphQL racecards are enriched with runner details from HKJC HTML", async () => {
   const previousFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -308,14 +308,14 @@ test("live GraphQL racecards are enriched with runner age and sex from HKJC HTML
                     status: "START_SELL",
                     sellStatus: "START_SELL",
                     lastUpdateTime: "10:01",
-                    oddsNodes: [{ combString: "01", oddsValue: "4.8", hotFavourite: false }],
+                    oddsNodes: [{ combString: "02", oddsValue: "4.8", hotFavourite: false }],
                   },
                   {
                     oddsType: "PLA",
                     status: "START_SELL",
                     sellStatus: "START_SELL",
                     lastUpdateTime: "10:01",
-                    oddsNodes: [{ combString: "01", oddsValue: "1.7", hotFavourite: false }],
+                    oddsNodes: [{ combString: "02", oddsValue: "1.7", hotFavourite: false }],
                   },
                 ],
               },
@@ -353,19 +353,19 @@ test("live GraphQL racecards are enriched with runner age and sex from HKJC HTML
                   raceCourse: { description_en: "Sha Tin Racecourse", displayCode: "C" },
                   runners: [
                     {
-                      no: "1",
+                      no: "2",
                       status: "Declared",
-                      name_en: "ALMIGHTY WARRIOR",
-                      horse: { code: "L245" },
-                      barrierDrawNumber: "3",
+                      name_en: "SHARP PLANET",
+                      horse: { code: "L308" },
+                      barrierDrawNumber: "5",
                       handicapWeight: "126",
-                      currentWeight: "936",
-                      currentRating: "",
-                      gearInfo: "XB1",
+                      currentWeight: "1120",
+                      currentRating: "75",
+                      gearInfo: "TT1",
                       last6run: "",
                       winOdds: "4.8",
-                      jockey: { name_en: "Z Purton" },
-                      trainer: { name_en: "K W Lui" },
+                      jockey: { name_en: "J Moreira" },
+                      trainer: { name_en: "C Fownes" },
                     },
                   ],
                 },
@@ -396,6 +396,9 @@ test("live GraphQL racecards are enriched with runner age and sex from HKJC HTML
 
     assert.equal(result.raceCard.runners[0]?.age, "3");
     assert.equal(result.raceCard.runners[0]?.sex, "g");
+    assert.equal(result.raceCard.runners[0]?.overWeight, "1");
+    assert.equal(result.raceCard.runners[0]?.bestTime, "0.56.20");
+    assert.equal(result.raceCard.runners[0]?.daysSinceLastRun, "28");
   } finally {
     globalThis.fetch = previousFetch;
   }

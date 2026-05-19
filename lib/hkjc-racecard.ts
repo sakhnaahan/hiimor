@@ -533,26 +533,48 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
 
 function mergeRunnerDetailsFromHtmlRaceCard(targetRaceCard: HkjcRaceCard, htmlRaceCard: HkjcRaceCard) {
   const htmlRunnerDetailsByHorseNo = new Map(
-    htmlRaceCard.runners.map((runner) => [
-      runner.horseNo,
-      {
-        age: runner.age,
-        sex: runner.sex,
-      },
-    ]),
+    htmlRaceCard.runners.map((runner) => [runner.horseNo, runner]),
   );
 
-  targetRaceCard.runners = targetRaceCard.runners.map((runner) => ({
-    ...runner,
-    age:
-      runner.age ||
-      cleanDash(htmlRunnerDetailsByHorseNo.get(runner.horseNo)?.age ?? ""),
-    sex:
-      runner.sex ||
-      cleanDash(htmlRunnerDetailsByHorseNo.get(runner.horseNo)?.sex ?? ""),
-  }));
+  const fillDetail = (currentValue: string, htmlValue: string | undefined) =>
+    cleanDash(currentValue) || cleanDash(htmlValue ?? "");
+
+  targetRaceCard.runners = targetRaceCard.runners.map((runner) => {
+    const htmlRunner = htmlRunnerDetailsByHorseNo.get(runner.horseNo);
+    if (!htmlRunner) {
+      return runner;
+    }
+
+    return {
+      ...runner,
+      last6Runs: fillDetail(runner.last6Runs, htmlRunner.last6Runs),
+      brandNo: fillDetail(runner.brandNo, htmlRunner.brandNo),
+      weight: fillDetail(runner.weight, htmlRunner.weight),
+      jockey: fillDetail(runner.jockey, htmlRunner.jockey),
+      overWeight: fillDetail(runner.overWeight, htmlRunner.overWeight),
+      draw: fillDetail(runner.draw, htmlRunner.draw),
+      trainer: fillDetail(runner.trainer, htmlRunner.trainer),
+      rating: fillDetail(runner.rating, htmlRunner.rating),
+      horseWeight: fillDetail(runner.horseWeight, htmlRunner.horseWeight),
+      bestTime: fillDetail(runner.bestTime, htmlRunner.bestTime),
+      age: fillDetail(runner.age, htmlRunner.age),
+      sex: fillDetail(runner.sex, htmlRunner.sex),
+      daysSinceLastRun: fillDetail(runner.daysSinceLastRun, htmlRunner.daysSinceLastRun),
+      gear: fillDetail(runner.gear, htmlRunner.gear),
+    };
+  });
 
   return targetRaceCard;
+}
+
+function isMissingHtmlRunnerDetails(raceCard: HkjcRaceCard) {
+  return (
+    !isLocalMainRaceCard(raceCard) &&
+    raceCard.runners.length > 0 &&
+    raceCard.runners.every(
+      (runner) => !runner.age && !runner.sex && !runner.bestTime && !runner.daysSinceLastRun && !runner.overWeight,
+    )
+  );
 }
 
 async function enrichRaceCardWithHtmlRunnerDetails(raceCard: HkjcRaceCard) {
@@ -1114,7 +1136,7 @@ function inferSnapshotStatus(raceCard: HkjcRaceCard) {
 
 export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
   const stored = await readStoredHkjcRaceCard(request).catch(() => null);
-  if (stored?.isFresh) {
+  if (stored?.isFresh && !isMissingHtmlRunnerDetails(stored.raceCard)) {
     return { ok: true, raceCard: await hydrateRaceCardOdds(stored.raceCard) };
   }
 

@@ -260,7 +260,7 @@ export const translations = {
     picked: "Сонгосон морь",
     raceHistory: "Тааврын түүх",
     showingRaces: "Сүүлийн 3 сарын таавар.",
-    transactionHistory: "Коины түүх",
+    transactionHistory: "Коины орлого, зарлага",
     showingTransactions: "Сүүлийн 3 сарын коины хөдөлгөөн.",
     historyResultsTab: "Үр дүн",
     historyTransactionsTab: "Гүйлгээ",
@@ -425,11 +425,11 @@ export function betTypeLabel(language: Language, betType: string) {
 
 export function transactionTypeLabel(language: Language, type: string) {
   if (type === "BET_PLACED") {
-    return language === "mn" ? "Тааварт тавьсан" : "Bet placed";
+    return language === "mn" ? "Тааварт мөнгө тавьсан" : "Bet placed";
   }
 
   if (type === "RACE_WIN") {
-    return language === "mn" ? "Тааврын хожоо" : "Race win paid";
+    return language === "mn" ? "Тааврын хожоо орсон" : "Race win paid";
   }
 
   if (type === "RACE_LOSS") {
