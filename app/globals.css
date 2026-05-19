@@ -704,25 +704,55 @@ textarea {
 }
 
 .runner-secondary-facts {
-  background: #fbfaf6;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px 10px;
+  gap: 8px;
   margin-top: 0;
-  padding: 8px;
+  padding: 0;
 }
 
 .runner-fact {
   display: flex;
   gap: 4px;
+  justify-content: flex-start;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
+.runner-fact.is-last6 {
+  align-items: flex-start;
+}
+
 .runner-fact-label {
   flex: 0 0 auto;
+}
+
+.runner-last6-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.runner-last6-chip {
+  align-items: center;
+  background: #e5e7eb;
+  border-radius: 6px;
+  color: #111827;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  min-height: 22px;
+  min-width: 22px;
+  padding: 0 5px;
+}
+
+.runner-last6-chip.is-highlighted {
+  background: #c9962c;
+  color: white;
 }
 
 .runner-signals {
@@ -964,6 +994,7 @@ textarea {
   line-height: 1.1;
   min-width: 46px;
   padding: 8px 6px;
+  position: relative;
   text-align: center;
   white-space: nowrap;
 }
@@ -978,6 +1009,10 @@ textarea {
   background: white;
   color: #475569;
   font-weight: 700;
+}
+
+.quinella-matrix td.is-diagonal {
+  background: #f8fafc;
 }
 
 .quinella-matrix .is-banker {
@@ -995,6 +1030,37 @@ textarea {
 .quinella-matrix td.is-intersection {
   background: #f0522a;
   color: white;
+}
+
+.quinella-matrix th.is-inspected-horse {
+  background: #173f84;
+  box-shadow: inset 0 0 0 3px #173f84;
+  color: white;
+}
+
+.quinella-matrix td.is-inspected {
+  box-shadow: inset 0 0 0 3px #173f84;
+}
+
+.quinella-matrix-cell-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-weight: inherit;
+  margin: -8px -6px;
+  min-height: 30px;
+  padding: 8px 6px;
+  width: calc(100% + 12px);
+}
+
+.quinella-matrix-placeholder {
+  color: #94a3b8;
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
 }
 
 .quinella-mode-note {
@@ -1047,7 +1113,7 @@ textarea {
   align-items: stretch;
   display: grid;
   gap: 10px;
-  grid-template-columns: 86px minmax(0, 1fr) 230px 36px 10px;
+  grid-template-columns: 64px minmax(0, 1fr) 230px 36px 10px;
   min-height: 96px;
 }
 
@@ -1055,53 +1121,105 @@ textarea {
   align-items: center;
   border-right: 1px solid var(--line);
   color: var(--brand-strong);
-  display: grid;
-  grid-template-columns: 20px 34px 32px;
-  justify-items: center;
-  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  padding: 8px 4px;
 }
 
 .runner-rail strong {
-  font-size: 31px;
+  font-size: 24px;
   line-height: 1;
 }
 
-.runner-flag {
-  align-self: start;
-  background: #d7d7d7;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
-  height: 36px;
-  width: 18px;
-}
-
 .silk-placeholder {
-  background: var(--silk-primary);
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 2px 2px 8px 8px;
   display: inline-block;
-  height: 34px;
+  height: 40px;
   position: relative;
-  width: 28px;
+  width: 30px;
 }
 
-.silk-placeholder::before,
-.silk-placeholder::after {
-  background: var(--silk-accent);
-  content: "";
+.silk-placeholder-head,
+.silk-placeholder-cap,
+.silk-placeholder-sleeve,
+.silk-placeholder-torso,
+.silk-placeholder-stripe {
   position: absolute;
 }
 
-.silk-placeholder::before {
+.silk-placeholder-head {
+  background: #fff7ed;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 50%;
-  height: 9px;
-  left: 9px;
-  top: -8px;
-  width: 9px;
+  height: 13px;
+  left: 8px;
+  top: 2px;
+  width: 13px;
+  z-index: 2;
 }
 
-.silk-placeholder::after {
-  inset: 8px 0 auto;
-  height: 7px;
+.silk-placeholder-cap {
+  background: var(--silk-accent);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 8px 8px 3px 3px;
+  height: 3px;
+  left: 2px;
+  right: 2px;
+  top: -5px;
+}
+
+.silk-placeholder-head::before {
+  background: #dc2626;
+  border-radius: 50%;
+  box-shadow: 5px -1px 0 #dc2626, 8px 3px 0 #dc2626;
+  content: "";
+  height: 2px;
+  left: 2px;
+  opacity: 0.7;
+  position: absolute;
+  top: 3px;
+  width: 2px;
+}
+
+.silk-placeholder-torso {
+  background: var(--silk-primary);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 3px 3px 2px 2px;
+  bottom: 1px;
+  height: 22px;
+  left: 7px;
+  overflow: hidden;
+  width: 16px;
+}
+
+.silk-placeholder-stripe {
+  background: var(--silk-accent);
+  bottom: 0;
+  left: 6px;
+  top: 0;
+  width: 4px;
+}
+
+.silk-placeholder-sleeve {
+  background: var(--silk-accent);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 5px;
+  height: 17px;
+  top: 18px;
+  width: 7px;
+}
+
+.silk-placeholder-sleeve-left {
+  left: 2px;
+  transform: rotate(12deg);
+  transform-origin: top center;
+}
+
+.silk-placeholder-sleeve-right {
+  right: 2px;
+  transform: rotate(-12deg);
+  transform-origin: top center;
 }
 
 .runner-core {
@@ -1218,18 +1336,29 @@ textarea {
   border-top: 1px solid var(--line);
   display: grid;
   gap: 12px;
-  padding: 14px 16px 16px 106px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  padding: 14px 16px 16px 64px;
 }
 
-.runner-detail-hero {
-  align-items: center;
-  display: flex;
+.runner-detail-main {
+  display: grid;
   gap: 12px;
 }
 
-.runner-detail-hero > div {
-  display: grid;
-  gap: 2px;
+.runner-detail-side {
+  align-items: start;
+  display: flex;
+  justify-content: center;
+  min-height: 100%;
+}
+
+.runner-detail-horse-image {
+  display: block;
+  height: auto;
+  max-height: 200px;
+  max-width: 220px;
+  object-fit: contain;
+  width: 100%;
 }
 
 .race-panel {
@@ -2457,36 +2586,72 @@ textarea {
 
   .runner-row-main {
     gap: 6px;
-    grid-template-columns: 58px minmax(0, 1fr) 132px 24px;
+    grid-template-columns: 46px minmax(0, 1fr) 132px 24px;
     min-height: 86px;
     position: relative;
   }
 
   .runner-rail {
     grid-row: 1;
-    grid-template-columns: 10px 24px 20px;
-    padding: 6px 2px;
+    gap: 3px;
+    padding: 5px 2px;
   }
 
   .runner-rail strong {
-    font-size: 24px;
-  }
-
-  .runner-flag {
-    height: 28px;
-    width: 12px;
+    font-size: 18px;
   }
 
   .silk-placeholder {
-    height: 27px;
-    width: 22px;
+    height: 34px;
+    width: 25px;
   }
 
-  .silk-placeholder::before {
-    height: 6px;
+  .silk-placeholder-head {
+    height: 10px;
     left: 7px;
-    top: -6px;
+    top: 2px;
+    width: 10px;
+  }
+
+  .silk-placeholder-cap {
+    height: 3px;
+    left: 2px;
+    right: 2px;
+    top: -5px;
+  }
+
+  .silk-placeholder-head::before {
+    box-shadow: 4px -1px 0 #dc2626, 6px 2px 0 #dc2626;
+    height: 2px;
+    left: 2px;
+    top: 2px;
+    width: 2px;
+  }
+
+  .silk-placeholder-torso {
+    bottom: 1px;
+    height: 19px;
+    left: 6px;
+    width: 13px;
+  }
+
+  .silk-placeholder-stripe {
+    left: 5px;
+    width: 3px;
+  }
+
+  .silk-placeholder-sleeve {
+    height: 14px;
+    top: 16px;
     width: 6px;
+  }
+
+  .silk-placeholder-sleeve-left {
+    left: 1px;
+  }
+
+  .silk-placeholder-sleeve-right {
+    right: 1px;
   }
 
   .runner-core {
@@ -2579,11 +2744,19 @@ textarea {
   }
 
   .runner-detail-card {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 112px;
     padding: 14px;
   }
 
-  .runner-detail-hero {
-    color: #0b315f;
+  .runner-detail-side {
+    align-items: start;
+    display: flex;
+  }
+
+  .runner-detail-horse-image {
+    max-height: 112px;
+    max-width: 112px;
   }
 
   .racecard-form-header {
@@ -2600,8 +2773,6 @@ textarea {
   }
 
   .runner-secondary-facts {
-    border-radius: 8px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 0;
   }
 

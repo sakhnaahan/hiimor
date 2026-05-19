@@ -24,23 +24,33 @@ export type QuinellaDraft = {
   legHorseNos: string[];
 };
 
+export type QuinellaInspectedPair = {
+  rowHorseNo: string;
+  columnHorseNo: string;
+};
+
 export type QuinellaHighlightedCell = {
   horseNo: string;
   odds: string | null;
   displayOdds: string | null;
+  isDiagonal: boolean;
   isBanker: boolean;
   isLeg: boolean;
   isHighlighted: boolean;
   isIntersection: boolean;
+  isInspected: boolean;
 };
 
 export type QuinellaOddsMatrixRow = {
   horseNo: string;
+  isInspected: boolean;
   cells: QuinellaHighlightedCell[];
 };
 
 export type QuinellaOddsMatrix = {
   horseNos: string[];
+  inspectedRowHorseNo: string | null;
+  inspectedColumnHorseNo: string | null;
   rows: QuinellaOddsMatrixRow[];
 };
 
@@ -366,6 +376,7 @@ export function buildQuinellaOddsMatrix(
   quinellaOdds: readonly HkjcQuinellaOdds[],
   bankerHorseNo: string | null,
   legHorseNos: readonly string[],
+  inspectedPair: QuinellaInspectedPair | null = null,
 ): QuinellaOddsMatrix {
   const horseNos = runners
     .map((runner) => runner.horseNo)
@@ -373,18 +384,23 @@ export function buildQuinellaOddsMatrix(
 
   return {
     horseNos,
+    inspectedRowHorseNo: inspectedPair?.rowHorseNo ?? null,
+    inspectedColumnHorseNo: inspectedPair?.columnHorseNo ?? null,
     rows: horseNos.map((rowHorseNo) => ({
       horseNo: rowHorseNo,
+      isInspected: inspectedPair?.rowHorseNo === rowHorseNo,
       cells: horseNos.map((columnHorseNo) => {
         if (rowHorseNo === columnHorseNo) {
           return {
             horseNo: columnHorseNo,
             odds: null,
             displayOdds: null,
+            isDiagonal: true,
             isBanker: bankerHorseNo === columnHorseNo,
             isLeg: legHorseNos.includes(columnHorseNo),
             isHighlighted: false,
             isIntersection: false,
+            isInspected: false,
           };
         }
 
@@ -397,15 +413,20 @@ export function buildQuinellaOddsMatrix(
           Boolean(bankerHorseNo) &&
           ((rowHorseNo === bankerHorseNo && legHorseNos.includes(columnHorseNo)) ||
             (columnHorseNo === bankerHorseNo && legHorseNos.includes(rowHorseNo)));
+        const isInspected =
+          inspectedPair?.rowHorseNo === rowHorseNo &&
+          inspectedPair.columnHorseNo === columnHorseNo;
 
         return {
           horseNo: columnHorseNo,
           odds: oddsValue ?? null,
           displayOdds: formatQuinellaMatrixDisplayOdds(oddsValue),
+          isDiagonal: false,
           isBanker: bankerHorseNo === columnHorseNo || bankerHorseNo === rowHorseNo,
           isLeg: legHorseNos.includes(columnHorseNo) || legHorseNos.includes(rowHorseNo),
           isHighlighted: rowHighlighted || columnHighlighted,
           isIntersection,
+          isInspected,
         };
       }),
     })),

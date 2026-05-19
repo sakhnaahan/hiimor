@@ -288,9 +288,68 @@ test("quinella odds map and matrix highlight banker and legs", () => {
   const matrix = buildQuinellaOddsMatrix(runners, quinellaOdds, "5", ["8"]);
   assert.equal(matrix.rows[0]?.cells[1]?.odds, "16.4");
   assert.equal(matrix.rows[0]?.cells[1]?.displayOdds, "16");
+  assert.equal(matrix.rows[0]?.cells[0]?.isDiagonal, true);
+  assert.equal(matrix.rows[0]?.cells[0]?.displayOdds, null);
   assert.equal(matrix.rows[0]?.cells[1]?.isIntersection, true);
   assert.equal(matrix.rows[2]?.cells[1]?.isHighlighted, true);
   assert.equal(matrix.rows[0]?.cells[2]?.displayOdds, "19");
+  assert.equal(matrix.rows[1]?.cells[2]?.isDiagonal, false);
+  assert.equal(matrix.rows[1]?.cells[2]?.displayOdds, "24");
+});
+
+test("quinella matrix inspected pair marks exactly one odds cell and two headers", () => {
+  const runners = [runner("5", "FIVE"), runner("7", "SEVEN"), runner("9", "NINE")];
+  const quinellaOdds = [
+    { horseNoA: "5", horseNoB: "7", odds: "18.0", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "5", horseNoB: "9", odds: "21.0", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "7", horseNoB: "9", odds: "24.0", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+  ];
+
+  const matrix = buildQuinellaOddsMatrix(runners, quinellaOdds, null, [], {
+    rowHorseNo: "5",
+    columnHorseNo: "7",
+  });
+
+  assert.equal(matrix.inspectedRowHorseNo, "5");
+  assert.equal(matrix.inspectedColumnHorseNo, "7");
+  assert.equal(matrix.rows[0]?.isInspected, true);
+  assert.equal(matrix.rows[1]?.isInspected, false);
+  assert.equal(matrix.rows[2]?.isInspected, false);
+  assert.equal(matrix.rows[0]?.cells[1]?.isInspected, true);
+  assert.equal(matrix.rows[0]?.cells[2]?.isInspected, false);
+  assert.equal(matrix.rows[1]?.cells[0]?.isInspected, false);
+});
+
+test("quinella matrix inspected pair preserves banker and leg highlighting", () => {
+  const runners = [runner("5", "FIVE"), runner("8", "EIGHT"), runner("9", "NINE")];
+  const quinellaOdds = [
+    { horseNoA: "5", horseNoB: "8", odds: "16.4", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "5", horseNoB: "9", odds: "18.5", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+    { horseNoA: "8", horseNoB: "9", odds: "24.1", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+  ];
+
+  const matrix = buildQuinellaOddsMatrix(runners, quinellaOdds, "5", ["8"], {
+    rowHorseNo: "5",
+    columnHorseNo: "8",
+  });
+
+  assert.equal(matrix.rows[0]?.cells[1]?.isInspected, true);
+  assert.equal(matrix.rows[0]?.cells[1]?.isIntersection, true);
+  assert.equal(matrix.rows[0]?.cells[1]?.isHighlighted, true);
+});
+
+test("quinella matrix does not inspect diagonal or missing-odds cells by default", () => {
+  const runners = [runner("5", "FIVE"), runner("7", "SEVEN"), runner("9", "NINE")];
+  const quinellaOdds = [
+    { horseNoA: "5", horseNoB: "7", odds: "18.0", poolStatus: "", sellStatus: "", lastUpdateTime: "", inferred: true },
+  ];
+
+  const matrix = buildQuinellaOddsMatrix(runners, quinellaOdds, null, []);
+
+  assert.equal(matrix.rows[0]?.cells[0]?.isDiagonal, true);
+  assert.equal(matrix.rows[0]?.cells[0]?.isInspected, false);
+  assert.equal(matrix.rows[1]?.cells[2]?.displayOdds, null);
+  assert.equal(matrix.rows[1]?.cells[2]?.isInspected, false);
 });
 
 test("place dividend qualification follows local HKJC runner-count rules", () => {

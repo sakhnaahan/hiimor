@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseHkjcRaceCardGraphql, parseHkjcRaceCardHtml, parseMainHkjcFixtureMeetings } from "@/lib/hkjc-racecard";
+import {
+  getLiveHkjcUpcomingRaceCard,
+  parseHkjcRaceCardGraphql,
+  parseHkjcRaceCardHtml,
+  parseMainHkjcFixtureMeetings,
+} from "@/lib/hkjc-racecard";
 import { parseHkjcRaceResultHtml } from "@/lib/hkjc-results";
 
 const fixture = `
@@ -281,6 +286,118 @@ test("HKJC GraphQL parser returns null when only overseas meetings exist", () =>
   });
 
   assert.equal(raceCard, null);
+});
+
+test("live GraphQL racecards are enriched with runner sex from HKJC HTML", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+
+    if (url.includes("/graphql/base/")) {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { variables?: { oddsTypes?: string[] } };
+      const oddsTypes = body.variables?.oddsTypes ?? [];
+
+      if (oddsTypes.includes("WIN") || oddsTypes.includes("PLA")) {
+        return Response.json({
+          data: {
+            raceMeetings: [
+              {
+                pmPools: [
+                  {
+                    oddsType: "WIN",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:01",
+                    oddsNodes: [{ combString: "01", oddsValue: "4.8", hotFavourite: false }],
+                  },
+                  {
+                    oddsType: "PLA",
+                    status: "START_SELL",
+                    sellStatus: "START_SELL",
+                    lastUpdateTime: "10:01",
+                    oddsNodes: [{ combString: "01", oddsValue: "1.7", hotFavourite: false }],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+
+      if (oddsTypes.includes("QIN")) {
+        return Response.json({
+          data: {
+            raceMeetings: [{ pmPools: [] }],
+          },
+        });
+      }
+
+      return Response.json({
+        data: {
+          raceMeetings: [
+            {
+              venueCode: "ST",
+              date: "2026-05-09",
+              currentNumberOfRace: 1,
+              dateOfWeek: "SAT",
+              races: [
+                {
+                  no: 1,
+                  status: "DECLARED",
+                  raceName_en: "BUTTERFLY BAY PLATE",
+                  postTime: "2026-05-09T12:30:00+08:00",
+                  country_en: "Hong Kong",
+                  distance: 1000,
+                  go_en: "Good",
+                  raceTrack: { description_en: "Turf" },
+                  raceCourse: { description_en: "Sha Tin Racecourse", displayCode: "C" },
+                  runners: [
+                    {
+                      no: "1",
+                      status: "Declared",
+                      name_en: "ALMIGHTY WARRIOR",
+                      horse: { code: "L245" },
+                      barrierDrawNumber: "3",
+                      handicapWeight: "126",
+                      currentWeight: "936",
+                      currentRating: "",
+                      gearInfo: "XB1",
+                      last6run: "",
+                      winOdds: "4.8",
+                      jockey: { name_en: "Z Purton" },
+                      trainer: { name_en: "K W Lui" },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+
+    return new Response(fixture, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await getLiveHkjcUpcomingRaceCard({
+      raceDate: "2026/05/09",
+      racecourse: "ST",
+      raceNo: 1,
+    });
+
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.equal(result.raceCard.runners[0]?.sex, "g");
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test("HKJC GraphQL parser ignores direct overseas racecourse requests", () => {

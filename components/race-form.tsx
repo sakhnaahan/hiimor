@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { runRaceBasketAction } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
-import { formatCoins, formatRunnerAssignedWeight } from "@/lib/format";
+import {
+  formatCoins,
+  formatRunnerAssignedWeight,
+  formatRunnerHorseWeight,
+  formatRunnerLast6Runs,
+  formatRunnerSex,
+} from "@/lib/format";
 import { getTranslations, interpolate, type Language } from "@/lib/i18n";
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
 import {
@@ -26,6 +32,7 @@ import {
   parseStakeInput,
   selectQuinellaBanker,
   toggleQuinellaLeg,
+  type QuinellaInspectedPair,
   type MobileBetMode,
   type QuinellaDraft,
   type RaceBetType,
@@ -63,10 +70,33 @@ function RunnerFact({ label, value }: { label: string; value?: string }) {
   }
 
   return (
-    <span className="runner-fact">
+    <div className="runner-fact">
       <span className="runner-fact-label">{label}: </span>
       <strong>{value}</strong>
-    </span>
+    </div>
+  );
+}
+
+function RunnerLast6Fact({ label, value }: { label: string; value?: string }) {
+  const finishes = formatRunnerLast6Runs(value);
+  if (finishes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="runner-fact is-last6">
+      <span className="runner-fact-label">{label}: </span>
+      <span className="runner-last6-list">
+        {finishes.map((finish, index) => (
+          <span
+            className={`runner-last6-chip ${finish.isHighlighted ? "is-highlighted" : ""}`}
+            key={`${finish.value}-${index}`}
+          >
+            {finish.value}
+          </span>
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -89,7 +119,14 @@ function SilkPlaceholder({ horseNo }: { horseNo: string }) {
         { "--silk-primary": primary, "--silk-accent": accent } as CSSProperties
       }
     >
-      <span />
+      <span className="silk-placeholder-head">
+        <span className="silk-placeholder-cap" />
+      </span>
+      <span className="silk-placeholder-sleeve silk-placeholder-sleeve-left" />
+      <span className="silk-placeholder-sleeve silk-placeholder-sleeve-right" />
+      <span className="silk-placeholder-torso">
+        <span className="silk-placeholder-stripe" />
+      </span>
     </span>
   );
 }
@@ -171,6 +208,8 @@ export function RaceForm({
     createEmptyQuinellaDraft(),
   );
   const [quinellaOddsOpen, setQuinellaOddsOpen] = useState(false);
+  const [inspectedQuinellaPair, setInspectedQuinellaPair] =
+    useState<QuinellaInspectedPair | null>(null);
   const previousMobileBetModeRef = useRef(mobileBetMode);
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
   const basketTotals = getBasketTotals(basketItems);
@@ -288,8 +327,10 @@ export function RaceForm({
         raceCard.quinellaOdds,
         quinellaDraft.bankerHorseNo,
         quinellaDraft.legHorseNos,
+        inspectedQuinellaPair,
       ),
     [
+      inspectedQuinellaPair,
       quinellaDraft.bankerHorseNo,
       quinellaDraft.legHorseNos,
       raceCard.quinellaOdds,
@@ -349,6 +390,7 @@ export function RaceForm({
     if (mobileBetMode !== "quinella") {
       setQuinellaDraft(createEmptyQuinellaDraft());
       setQuinellaOddsOpen(false);
+      setInspectedQuinellaPair(null);
       setPendingBet((currentPendingBet) =>
         currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
       );
@@ -361,10 +403,19 @@ export function RaceForm({
     }
 
     setQuinellaDraft(createEmptyQuinellaDraft());
+    setInspectedQuinellaPair(null);
     setPendingBet((currentPendingBet) =>
       currentPendingBet?.betType === "QUINELLA" ? null : currentPendingBet,
     );
   }, [quinellaAvailable]);
+
+  useEffect(() => {
+    if (mobileBetMode === "quinella" && quinellaOddsOpen && quinellaAvailable) {
+      return;
+    }
+
+    setInspectedQuinellaPair(null);
+  }, [mobileBetMode, quinellaAvailable, quinellaOddsOpen]);
 
   function openBetSlipPanel() {
     setBetSlipOpen(true);
@@ -584,6 +635,13 @@ export function RaceForm({
     syncQuinellaPendingBet(nextDraft);
   }
 
+  function inspectQuinellaPair(rowHorseNo: string, columnHorseNo: string) {
+    setInspectedQuinellaPair({
+      rowHorseNo,
+      columnHorseNo,
+    });
+  }
+
   function selectComboPlace(runner: HkjcRunner) {
     const nextWinHorseNo =
       comboWinHorseNo === runner.horseNo ? null : comboWinHorseNo;
@@ -688,65 +746,93 @@ export function RaceForm({
                     </button>
                     {quinellaOddsOpen ? (
                       <div className="quinella-matrix-wrap">
-                        {quinellaAvailable ? (
-                          <table className="quinella-matrix">
-                            <thead>
-                              <tr>
-                                <th>QIN</th>
-                                {quinellaMatrix.horseNos.map((horseNo) => (
-                                  <th
-                                    className={
-                                      quinellaDraft.bankerHorseNo === horseNo
-                                        ? "is-banker"
-                                        : quinellaDraft.legHorseNos.includes(
-                                              horseNo,
-                                            )
-                                          ? "is-leg"
-                                          : ""
-                                    }
-                                    key={horseNo}
+                        <table className="quinella-matrix">
+                          <thead>
+                            <tr>
+                              <th>QIN</th>
+                              {quinellaMatrix.horseNos.map((horseNo) => (
+                                <th
+                                  className={[
+                                    quinellaDraft.bankerHorseNo === horseNo
+                                      ? "is-banker"
+                                      : quinellaDraft.legHorseNos.includes(
+                                            horseNo,
+                                          )
+                                        ? "is-leg"
+                                        : "",
+                                    quinellaMatrix.inspectedColumnHorseNo ===
+                                    horseNo
+                                      ? "is-inspected-horse"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                  key={horseNo}
+                                >
+                                  {horseNo}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {quinellaMatrix.rows.map((row) => (
+                              <tr key={row.horseNo}>
+                                <th
+                                  className={[
+                                    quinellaDraft.bankerHorseNo === row.horseNo
+                                      ? "is-banker"
+                                      : quinellaDraft.legHorseNos.includes(
+                                            row.horseNo,
+                                          )
+                                        ? "is-leg"
+                                        : "",
+                                    row.isInspected
+                                      ? "is-inspected-horse"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                >
+                                  {row.horseNo}
+                                </th>
+                                {row.cells.map((cell) => (
+                                  <td
+                                    className={[
+                                      cell.isDiagonal ? "is-diagonal" : "",
+                                      cell.isHighlighted ? "is-highlighted" : "",
+                                      cell.isIntersection
+                                        ? "is-intersection"
+                                        : "",
+                                      cell.isInspected ? "is-inspected" : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                    key={`${row.horseNo}-${cell.horseNo}`}
                                   >
-                                    {horseNo}
-                                  </th>
+                                    {cell.displayOdds ? (
+                                      <button
+                                        className="quinella-matrix-cell-button"
+                                        onClick={() =>
+                                          inspectQuinellaPair(
+                                            row.horseNo,
+                                            cell.horseNo,
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        {cell.displayOdds}
+                                      </button>
+                                    ) : !cell.isDiagonal ? (
+                                      <span className="quinella-matrix-placeholder">---</span>
+                                    ) : (
+                                      ""
+                                    )}
+                                  </td>
                                 ))}
                               </tr>
-                            </thead>
-                            <tbody>
-                              {quinellaMatrix.rows.map((row) => (
-                                <tr key={row.horseNo}>
-                                  <th
-                                    className={
-                                      quinellaDraft.bankerHorseNo === row.horseNo
-                                        ? "is-banker"
-                                        : quinellaDraft.legHorseNos.includes(
-                                              row.horseNo,
-                                            )
-                                          ? "is-leg"
-                                          : ""
-                                    }
-                                  >
-                                    {row.horseNo}
-                                  </th>
-                                  {row.cells.map((cell) => (
-                                    <td
-                                      className={[
-                                        cell.isHighlighted ? "is-highlighted" : "",
-                                        cell.isIntersection
-                                          ? "is-intersection"
-                                          : "",
-                                      ]
-                                        .filter(Boolean)
-                                        .join(" ")}
-                                      key={`${row.horseNo}-${cell.horseNo}`}
-                                    >
-                                      {cell.displayOdds ?? ""}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : null}
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : null}
                     {!quinellaAvailable ? (
@@ -811,15 +897,22 @@ export function RaceForm({
                   runner.weight,
                   language,
                 );
+                const runnerHorseWeight = formatRunnerHorseWeight(
+                  runner.horseWeight,
+                  language,
+                );
+                const runnerSexLabel = language === "mn" ? "Хүйс" : "Sex";
+                const runnerSex = formatRunnerSex(runner.sex, language);
                 const extraStats = [
                   { label: t.weight, value: runnerAssignedWeight },
+                  { label: t.horseWeight, value: runnerHorseWeight },
+                  { label: runnerSexLabel, value: runnerSex },
                   { label: t.gear, value: runner.gear },
-                  { label: t.last6, value: runner.last6Runs },
-                  { label: t.horseWeight, value: runner.horseWeight },
                   { label: t.rating, value: runner.rating },
                   { label: t.bestTime, value: runner.bestTime },
                   { label: t.daysSinceLastRun, value: runner.daysSinceLastRun },
                   { label: t.overWeight, value: runner.overWeight },
+                  { label: t.last6, value: runner.last6Runs },
                 ];
                 const hasExtraStats = extraStats.some((stat) => stat.value);
                 const signals = getRunnerStatSignals(raceCard, runner, language);
@@ -837,7 +930,6 @@ export function RaceForm({
                           setExpandedHorseNo(expanded ? null : runner.horseNo)
                         }
                       >
-                        <span className="runner-flag" />
                         <strong>{runner.horseNo}</strong>
                         <SilkPlaceholder horseNo={runner.horseNo} />
                       </span>
@@ -981,38 +1073,48 @@ export function RaceForm({
                     </div>
                     {expanded ? (
                       <div className="runner-detail-card" id={statsId}>
-                        <div className="runner-detail-hero">
-                          <SilkPlaceholder horseNo={runner.horseNo} />
-                          <div>
-                            <strong>{runner.name}</strong>
-                            <span>{runner.brandNo || t.tbc}</span>
+                        <div className="runner-detail-main">
+                          <div className="runner-secondary-facts">
+                            {hasExtraStats ? (
+                              extraStats.map((stat) => (
+                                stat.label === t.last6 ? (
+                                  <RunnerLast6Fact
+                                    key={stat.label}
+                                    label={stat.label}
+                                    value={stat.value}
+                                  />
+                                ) : (
+                                  <RunnerFact
+                                    key={stat.label}
+                                    label={stat.label}
+                                    value={stat.value}
+                                  />
+                                )
+                              ))
+                            ) : (
+                              <span className="muted">{t.noExtraStats}</span>
+                            )}
                           </div>
+                          {signals.length ? (
+                            <div className="runner-signals">
+                              {signals.map((signal) => (
+                                <span
+                                  className={`runner-signal ${signal.tone}`}
+                                  key={signal.label}
+                                >
+                                  {signal.label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="runner-secondary-facts">
-                          {hasExtraStats ? (
-                            extraStats.map((stat) => (
-                              <RunnerFact
-                                key={stat.label}
-                                label={stat.label}
-                                value={stat.value}
-                              />
-                            ))
-                          ) : (
-                            <span className="muted">{t.noExtraStats}</span>
-                          )}
+                        <div className="runner-detail-side" aria-hidden="true">
+                          <img
+                            alt=""
+                            className="runner-detail-horse-image"
+                            src="/images/horse-placeholder.png"
+                          />
                         </div>
-                        {signals.length ? (
-                          <div className="runner-signals">
-                            {signals.map((signal) => (
-                              <span
-                                className={`runner-signal ${signal.tone}`}
-                                key={signal.label}
-                              >
-                                {signal.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
                       </div>
                     ) : null}
                   </article>
@@ -1066,7 +1168,6 @@ export function RaceForm({
               id="betslip"
             >
               <div className="bet-slip-panel-top">
-                <strong>{t.selectedBets}</strong>
                 <button
                   className="bet-slip-panel-close"
                   onClick={closeBetSlipPanel}
@@ -1079,7 +1180,6 @@ export function RaceForm({
               <div
                 className="bet-slip-tabs"
                 role="tablist"
-                aria-label={t.selectedBets}
               >
                 <button
                   aria-selected={betSlipTab === "quick"}
@@ -1142,7 +1242,6 @@ export function RaceForm({
                 <div className="basket-slip-heading">
                   <div>
                     <span className="badge-label">{t.basket}</span>
-                    <strong>{t.selectedBets}</strong>
                   </div>
                   <button
                     className="button secondary basket-slip-close"
@@ -1264,10 +1363,6 @@ export function RaceForm({
                 )}
 
                 <div className="basket-slip-totals">
-                  <div>
-                    <span>{t.totalNoOfBets}</span>
-                    <strong>{basketTotals.lineCount}</strong>
-                  </div>
                   <div>
                     <span>{t.totalAmount}</span>
                     <strong>

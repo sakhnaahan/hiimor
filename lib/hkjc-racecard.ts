@@ -531,6 +531,44 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
   };
 }
 
+function mergeRunnerSexFromHtmlRaceCard(targetRaceCard: HkjcRaceCard, htmlRaceCard: HkjcRaceCard) {
+  const htmlRunnerSexByHorseNo = new Map(
+    htmlRaceCard.runners.map((runner) => [runner.horseNo, runner.sex]),
+  );
+
+  targetRaceCard.runners = targetRaceCard.runners.map((runner) => ({
+    ...runner,
+    sex: runner.sex || cleanDash(htmlRunnerSexByHorseNo.get(runner.horseNo) ?? ""),
+  }));
+
+  return targetRaceCard;
+}
+
+async function enrichRaceCardWithHtmlRunnerSex(raceCard: HkjcRaceCard) {
+  if (isLocalMainRaceCard(raceCard)) {
+    return raceCard;
+  }
+
+  const response = await fetch(raceCard.sourceUrl, {
+    headers: {
+      "user-agent": "private-horse-race/0.1 (+https://racing.hkjc.com)",
+    },
+    signal: AbortSignal.timeout(HKJC_FETCH_TIMEOUT_MS),
+    next: { revalidate: HKJC_CACHE_SECONDS },
+  });
+
+  if (!response.ok) {
+    return raceCard;
+  }
+
+  const htmlRaceCard = parseHkjcRaceCardHtml(await response.text(), raceCard.sourceUrl);
+  if (!htmlRaceCard) {
+    return raceCard;
+  }
+
+  return mergeRunnerSexFromHtmlRaceCard(raceCard, htmlRaceCard);
+}
+
 export function parseHkjcRaceCardGraphql(json: HkjcGraphqlResponse, request: RaceRequest = {}) {
   const sanitizedRequest = sanitizeRaceRequest(request);
   const requestedRaceDate = normalizeRaceDateForGraphql(sanitizedRequest.raceDate);
@@ -1011,7 +1049,10 @@ export async function getLiveHkjcUpcomingRaceCard(request: RaceRequest = {}): Pr
   try {
     const graphqlRaceCard = await getHkjcRaceCardFromGraphql(sanitizedRequest).catch(() => null);
     if (graphqlRaceCard) {
-      return { ok: true, raceCard: await hydrateRaceCardOdds(graphqlRaceCard) };
+      const enrichedGraphqlRaceCard = await enrichRaceCardWithHtmlRunnerSex(graphqlRaceCard).catch(
+        () => graphqlRaceCard,
+      );
+      return { ok: true, raceCard: await hydrateRaceCardOdds(enrichedGraphqlRaceCard) };
     }
 
     const response = await fetch(sourceUrl, {
