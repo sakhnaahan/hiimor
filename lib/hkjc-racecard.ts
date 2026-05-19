@@ -531,20 +531,31 @@ function mapGraphqlRaceCard(meeting: HkjcGraphqlMeeting, race: HkjcGraphqlRace):
   };
 }
 
-function mergeRunnerSexFromHtmlRaceCard(targetRaceCard: HkjcRaceCard, htmlRaceCard: HkjcRaceCard) {
-  const htmlRunnerSexByHorseNo = new Map(
-    htmlRaceCard.runners.map((runner) => [runner.horseNo, runner.sex]),
+function mergeRunnerDetailsFromHtmlRaceCard(targetRaceCard: HkjcRaceCard, htmlRaceCard: HkjcRaceCard) {
+  const htmlRunnerDetailsByHorseNo = new Map(
+    htmlRaceCard.runners.map((runner) => [
+      runner.horseNo,
+      {
+        age: runner.age,
+        sex: runner.sex,
+      },
+    ]),
   );
 
   targetRaceCard.runners = targetRaceCard.runners.map((runner) => ({
     ...runner,
-    sex: runner.sex || cleanDash(htmlRunnerSexByHorseNo.get(runner.horseNo) ?? ""),
+    age:
+      runner.age ||
+      cleanDash(htmlRunnerDetailsByHorseNo.get(runner.horseNo)?.age ?? ""),
+    sex:
+      runner.sex ||
+      cleanDash(htmlRunnerDetailsByHorseNo.get(runner.horseNo)?.sex ?? ""),
   }));
 
   return targetRaceCard;
 }
 
-async function enrichRaceCardWithHtmlRunnerSex(raceCard: HkjcRaceCard) {
+async function enrichRaceCardWithHtmlRunnerDetails(raceCard: HkjcRaceCard) {
   if (isLocalMainRaceCard(raceCard)) {
     return raceCard;
   }
@@ -566,7 +577,7 @@ async function enrichRaceCardWithHtmlRunnerSex(raceCard: HkjcRaceCard) {
     return raceCard;
   }
 
-  return mergeRunnerSexFromHtmlRaceCard(raceCard, htmlRaceCard);
+  return mergeRunnerDetailsFromHtmlRaceCard(raceCard, htmlRaceCard);
 }
 
 export function parseHkjcRaceCardGraphql(json: HkjcGraphqlResponse, request: RaceRequest = {}) {
@@ -1049,7 +1060,7 @@ export async function getLiveHkjcUpcomingRaceCard(request: RaceRequest = {}): Pr
   try {
     const graphqlRaceCard = await getHkjcRaceCardFromGraphql(sanitizedRequest).catch(() => null);
     if (graphqlRaceCard) {
-      const enrichedGraphqlRaceCard = await enrichRaceCardWithHtmlRunnerSex(graphqlRaceCard).catch(
+      const enrichedGraphqlRaceCard = await enrichRaceCardWithHtmlRunnerDetails(graphqlRaceCard).catch(
         () => graphqlRaceCard,
       );
       return { ok: true, raceCard: await hydrateRaceCardOdds(enrichedGraphqlRaceCard) };

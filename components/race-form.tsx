@@ -5,10 +5,8 @@ import { runRaceBasketAction } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import {
   formatCoins,
-  formatRunnerAssignedWeight,
   formatRunnerHorseWeight,
   formatRunnerLast6Runs,
-  formatRunnerSex,
 } from "@/lib/format";
 import { getTranslations, interpolate, type Language } from "@/lib/i18n";
 import type { HkjcRaceCard, HkjcRunner } from "@/lib/hkjc-racecard";
@@ -193,7 +191,7 @@ export function RaceForm({
   onSelectBetMode: (mode: MobileBetMode) => void;
 }) {
   const t = getTranslations(language);
-  const [expandedHorseNo, setExpandedHorseNo] = useState<string | null>(null);
+  const [expandedHorseNos, setExpandedHorseNos] = useState<string[]>([]);
   const [betSlipOpen, setBetSlipOpen] = useState(false);
   const [betSlipTab, setBetSlipTab] = useState<BetSlipTab>("quick");
   const [basketItems, setBasketItems] = useState<BasketItem[]>([]);
@@ -451,6 +449,14 @@ export function RaceForm({
     }
 
     closeBetSlipPanel();
+  }
+
+  function toggleExpandedHorse(horseNo: string) {
+    setExpandedHorseNos((currentHorseNos) =>
+      currentHorseNos.includes(horseNo)
+        ? currentHorseNos.filter((currentHorseNo) => currentHorseNo !== horseNo)
+        : [...currentHorseNos, horseNo],
+    );
   }
 
   function toggleBasketItem(item: BasketItem) {
@@ -728,6 +734,13 @@ export function RaceForm({
                   >
                     {t.comboWp}
                   </button>
+                  <button
+                    className={mobileBetMode === "quinella" ? "active" : ""}
+                    onClick={() => onSelectBetMode("quinella")}
+                    type="button"
+                  >
+                    {t.quinella}
+                  </button>
                 </div>
               </div>
               {quinellaMode ? (
@@ -844,7 +857,7 @@ export function RaceForm({
                 </div>
               ) : null}
               {raceCard.runners.map((runner) => {
-                const expanded = expandedHorseNo === runner.horseNo;
+                const expanded = expandedHorseNos.includes(runner.horseNo);
                 const selected = [
                   ...basketItems,
                   ...(pendingBet ? [pendingBet] : []),
@@ -893,21 +906,13 @@ export function RaceForm({
                 const quinellaLegSelected =
                   quinellaMode &&
                   quinellaDraft.legHorseNos.includes(runner.horseNo);
-                const runnerAssignedWeight = formatRunnerAssignedWeight(
-                  runner.weight,
-                  language,
-                );
                 const runnerHorseWeight = formatRunnerHorseWeight(
                   runner.horseWeight,
                   language,
                 );
-                const runnerSexLabel = language === "mn" ? "Хүйс" : "Sex";
-                const runnerSex = formatRunnerSex(runner.sex, language);
                 const extraStats = [
-                  { label: t.weight, value: runnerAssignedWeight },
+                  { label: t.horseAge, value: runner.age },
                   { label: t.horseWeight, value: runnerHorseWeight },
-                  { label: runnerSexLabel, value: runnerSex },
-                  { label: t.gear, value: runner.gear },
                   { label: t.rating, value: runner.rating },
                   { label: t.bestTime, value: runner.bestTime },
                   { label: t.daysSinceLastRun, value: runner.daysSinceLastRun },
@@ -926,18 +931,14 @@ export function RaceForm({
                     <div className="runner-row-main">
                       <span
                         className="runner-rail"
-                        onClick={() =>
-                          setExpandedHorseNo(expanded ? null : runner.horseNo)
-                        }
+                        onClick={() => toggleExpandedHorse(runner.horseNo)}
                       >
                         <strong>{runner.horseNo}</strong>
                         <SilkPlaceholder horseNo={runner.horseNo} />
                       </span>
                       <span
                         className="runner-core"
-                        onClick={() =>
-                          setExpandedHorseNo(expanded ? null : runner.horseNo)
-                        }
+                        onClick={() => toggleExpandedHorse(runner.horseNo)}
                       >
                         <strong>{runner.name}</strong>
                         <span className="runner-people">
@@ -1062,9 +1063,7 @@ export function RaceForm({
                         aria-controls={statsId}
                         aria-expanded={expanded}
                         className="runner-expand"
-                        onClick={() =>
-                          setExpandedHorseNo(expanded ? null : runner.horseNo)
-                        }
+                        onClick={() => toggleExpandedHorse(runner.horseNo)}
                         type="button"
                       >
                         {expanded ? <FaChevronUp /> : <FaChevronDown />}
@@ -1320,12 +1319,12 @@ export function RaceForm({
                             />
                           </div>
                           <div className="basket-item-total">
-                            <span>
+                            {/* <span>
                               {t.noOfBets}: {lineCount}
-                            </span>
-                            <strong>
+                            </span> */}
+                            {/* <strong>
                               {t.betTotal}: {formatCoins(lineTotal, language)}
-                            </strong>
+                            </strong> */}
                             {runner ? (
                               <span className="muted">
                                 {item.betType === "QUINELLA"
@@ -1363,12 +1362,12 @@ export function RaceForm({
                 )}
 
                 <div className="basket-slip-totals">
-                  <div>
+                  {/* <div>
                     <span>{t.totalAmount}</span>
                     <strong>
                       {formatCoins(basketTotals.totalStake, language)}
                     </strong>
-                  </div>
+                  </div> */}
                   <div>
                     <span>{t.ifYouWin}</span>
                     <strong>{formatCoins(potentialPayout, language)}</strong>

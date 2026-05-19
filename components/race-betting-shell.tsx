@@ -44,6 +44,7 @@ export function RaceBettingShell({
         pendingRaceCount={pendingRaceCount}
         raceCard={raceCard}
         raceDetails={raceDetails}
+        showBetModeControls
       />
       {children}
       <RaceForm

@@ -683,6 +683,71 @@ textarea {
   font-weight: 800;
 }
 
+.history-card-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.history-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.history-card-pending {
+  background: #eef6ff;
+  border-color: rgba(11, 85, 160, 0.24);
+}
+
+.history-card-head {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.history-card-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.history-card-head > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-card-head strong,
+.history-card-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.history-card-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-card-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.history-card-note {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.history-mobile-switch {
+  display: none;
+}
+
 .horse-select {
   display: grid;
   cursor: pointer;
@@ -870,7 +935,7 @@ textarea {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
-  display: grid;
+  display: none;
   gap: 8px;
   padding: 10px;
 }
@@ -878,7 +943,7 @@ textarea {
 .combo-mode-switch {
   display: grid;
   gap: 6px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .combo-mode-switch button,
@@ -1489,6 +1554,32 @@ textarea {
   display: none;
 }
 
+.race-wager-switch {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+  max-width: 520px;
+}
+
+.race-wager-switch button {
+  background: #f1f3f5;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.race-wager-switch button.active {
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+  color: white;
+}
+
 .race-mobile-details,
 .race-mobile-wager {
   display: none;
@@ -1980,6 +2071,98 @@ textarea {
 .runner-subtext {
   display: block;
   margin-top: 2px;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .shell {
+    width: min(100% - 28px, 1120px);
+  }
+
+  .race-summary-header {
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) 180px;
+  }
+
+  .race-title {
+    font-size: 22px;
+  }
+
+  .race-map {
+    width: 180px;
+  }
+
+  .race-notice-strip {
+    flex-wrap: wrap;
+  }
+
+  .race-notice-strip a {
+    margin-left: 0;
+  }
+
+  .race-betting-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bet-slip {
+    position: static;
+    top: auto;
+  }
+
+  .runner-row-main {
+    gap: 8px;
+    grid-template-columns: 56px minmax(0, 1fr) 176px 28px 10px;
+    min-height: 92px;
+  }
+
+  .runner-rail {
+    padding: 8px 4px;
+  }
+
+  .runner-rail strong {
+    font-size: 21px;
+  }
+
+  .runner-core > strong {
+    font-size: 20px;
+  }
+
+  .runner-people {
+    gap: 6px 12px;
+  }
+
+  .runner-odds-grid {
+    gap: 6px;
+  }
+
+  .runner-odds-grid > span,
+  .runner-odds-grid > button {
+    min-height: 50px;
+  }
+
+  .runner-detail-card {
+    grid-template-columns: minmax(0, 1fr) 148px;
+    padding-left: 56px;
+  }
+
+  .runner-detail-horse-image {
+    max-height: 148px;
+    max-width: 148px;
+  }
+}
+
+@media (max-width: 900px) and (min-width: 761px) {
+  .race-summary-header {
+    grid-template-columns: 1fr;
+  }
+
+  .race-map {
+    justify-self: start;
+    width: min(100%, 280px);
+  }
+
+  .race-wager-switch {
+    max-width: none;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2485,6 +2668,10 @@ textarea {
     display: none;
   }
 
+  .race-wager-switch {
+    display: none;
+  }
+
   .race-map {
     display: none;
   }
@@ -2766,6 +2953,10 @@ textarea {
   .runner-hot {
     font-size: 11px;
     padding: 3px 7px;
+  }
+
+  .runner-signals {
+    display: none;
   }
 
   .runner-signal {
@@ -3157,6 +3348,45 @@ textarea {
   .pending-bet-card {
     background: #eef6ff;
     border-color: rgba(11, 85, 160, 0.24);
+  }
+
+  .history-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-mobile-switch {
+    background: #f2f4f7;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 4px;
+  }
+
+  .history-mobile-switch button {
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 900;
+    min-height: 42px;
+    padding: 0 12px;
+  }
+
+  .history-mobile-switch button.active {
+    background: #0b3b78;
+    color: white;
+  }
+
+  .history-mobile-panel {
+    display: none;
+  }
+
+  .history-mobile-panel.is-active {
+    display: block;
   }
 
   .mobile-record-list {

@@ -74,6 +74,7 @@ export default async function RacePage({
                 pendingRaceCount={pendingRaceCount}
                 raceCard={hkjcRaceCard.raceCard}
                 raceDetails={raceDetails}
+                showBetModeControls={false}
               />
             ) : (
               <RaceBettingShell

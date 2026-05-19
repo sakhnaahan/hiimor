@@ -3,8 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { ensureBootstrapData } from "@/lib/bootstrap";
 import { formatCoins, formatDate } from "@/lib/format";
 import { settlePendingHkjcBets } from "@/lib/hkjc-settlement";
+import { HistoryMobileSections } from "@/components/history-mobile-sections";
 import { SettlementPoller } from "@/components/settlement-poller";
-import { getTranslations, resultLabel, type Language } from "@/lib/i18n";
+import {
+  betTypeLabel,
+  getTranslations,
+  historyResultLabel,
+  transactionTypeLabel,
+  type Language,
+} from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
 function resultBadgeClass(result: string) {
@@ -19,26 +26,33 @@ function resultBadgeClass(result: string) {
   return "";
 }
 
-function getRaceNet(race: { betAmount: number; payout: number; result: string }) {
-  if (race.result === "WIN") {
-    return race.payout - race.betAmount;
-  }
-
-  if (race.result === "LOSS") {
-    return -race.betAmount;
-  }
-
-  return null;
-}
-
-function formatRaceMeta(
-  race: { hkjcRaceDate: string | null; hkjcRaceNo: number | null; hkjcRacecourseName: string | null },
+function raceTitle(
+  race: { hkjcRaceName: string | null; hkjcRaceNo: number | null; id: number },
   language: Language,
 ) {
   const t = getTranslations(language);
-  return [race.hkjcRaceDate, race.hkjcRaceNo ? `${t.race} ${race.hkjcRaceNo}` : null, race.hkjcRacecourseName]
-    .filter(Boolean)
-    .join(", ");
+  return race.hkjcRaceName ?? `${t.race} ${race.hkjcRaceNo ?? race.id}`;
+}
+
+function raceExtraNote(
+  race: {
+    result: string;
+    winningHorse: string;
+    betType: string;
+  },
+  language: Language,
+) {
+  const t = getTranslations(language);
+
+  if (race.result === "PENDING") {
+    return t.pendingBetSimple;
+  }
+
+  if (race.winningHorse) {
+    return `${t.winner}: ${race.winningHorse}`;
+  }
+
+  return betTypeLabel(language, race.betType);
 }
 
 export default async function HistoryPage() {
@@ -66,224 +80,89 @@ export default async function HistoryPage() {
       orderBy: { createdAt: "desc" },
     }),
   ]);
+
   const pendingRaces = races.filter((race) => race.result === "PENDING");
+  const settledRaces = races.filter((race) => race.result !== "PENDING");
+  const visibleTransactions = transactions.filter(
+    (transaction) => transaction.type !== "RACE_LOSS",
+  );
+  const historyRaceItems = settledRaces.map((race) => ({
+    id: race.id,
+    title: raceTitle(race, language),
+    date: formatDate(race.createdAt, language),
+    pickedLabel: t.picked,
+    pickedValue: race.selectedHorse,
+    betLabel: t.bet,
+    betValue: formatCoins(race.betAmount, language),
+    resultLabel: historyResultLabel(language, race.result),
+    resultTone: resultBadgeClass(race.result),
+    note: raceExtraNote(race, language),
+  }));
+  const historyTransactionItems = visibleTransactions.map((transaction) => ({
+    id: transaction.id,
+    title: transactionTypeLabel(language, transaction.type),
+    date: formatDate(transaction.createdAt, language),
+    amount: `${transaction.amount > 0 ? "+" : ""}${formatCoins(
+      transaction.amount,
+      language,
+    )}`,
+    amountClassName:
+      transaction.amount >= 0 ? "amount-positive" : "amount-negative",
+    note: transaction.relatedRaceId
+      ? `${t.relatedRace}: ${t.race} ${transaction.relatedRaceId}`
+      : null,
+  }));
 
   return (
     <div className="grid">
-      <SettlementPoller enabled={races.some((race) => race.result === "PENDING")} />
+      <SettlementPoller enabled={pendingRaces.length > 0} />
+
       {pendingRaces.length ? (
         <section className="panel">
           <h2 className="section-title">{t.pendingBets}</h2>
-          <div className="grid">
+          <div className="history-card-list">
             {pendingRaces.map((race) => (
-              <div className="summary-row pending-bet-card" key={race.id}>
-                <div>
-                  <span className="badge-label">{t.picked}</span>
-                  <strong>{race.selectedHorse}</strong>
-                  <span className="muted">{race.betType}</span>
-                </div>
-                <div>
-                  <span className="badge-label">{t.race}</span>
-                  <strong>{race.hkjcRaceName ?? `${t.race} ${race.hkjcRaceNo ?? race.id}`}</strong>
-                </div>
-                <div>
-                  <span className="badge-label">{t.bet}</span>
-                  <strong>{formatCoins(race.betAmount, language)}</strong>
-                </div>
-                <div>
-                  <span className="badge-label">{t.odds}</span>
-                  <strong>{race.multiplierUsed}x</strong>
-                </div>
-                <span className="badge pending-status">{t.waitingResult}</span>
-                <small className="muted">{formatDate(race.createdAt, language)}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      <section className="panel">
-        <h2 className="section-title">{t.raceHistory}</h2>
-        <p className="muted">{t.showingRaces}</p>
-        <div className="mobile-record-list">
-          {races.map((race) => {
-            const net = getRaceNet(race);
-            const raceMeta = formatRaceMeta(race, language);
-
-            return (
-              <article className="mobile-record-card" key={race.id}>
-                <div className="mobile-record-head">
+              <article
+                className="history-card history-card-pending"
+                key={race.id}
+              >
+                <div className="history-card-head">
                   <div>
-                    <strong>{race.hkjcRaceName ?? `${t.race} ${race.hkjcRaceNo ?? race.id}`}</strong>
-                    {raceMeta ? <span>{raceMeta}</span> : null}
+                    <strong>{raceTitle(race, language)}</strong>
+                    <span>{formatDate(race.createdAt, language)}</span>
                   </div>
-                  <span className={`badge ${resultBadgeClass(race.result)}`}>{resultLabel(language, race.result)}</span>
+                  <span className="badge pending-status">
+                    {t.pendingBetSimple}
+                  </span>
                 </div>
-                <div className="mobile-record-grid">
+                <div className="history-card-grid">
                   <div>
                     <span className="badge-label">{t.picked}</span>
                     <strong>{race.selectedHorse}</strong>
-                  <span className="muted">{t.no} {race.selectedHorseNo ?? "-"}</span>
-                  <span className="muted">{race.betType}</span>
-                </div>
-                  <div>
-                    <span className="badge-label">{t.winner}</span>
-                    <strong>{race.winningHorse || t.waitingResult}</strong>
-                    <span className="muted">{t.no} {race.winningHorseNo ?? "-"}</span>
                   </div>
                   <div>
                     <span className="badge-label">{t.bet}</span>
                     <strong>{formatCoins(race.betAmount, language)}</strong>
                   </div>
-                  <div>
-                    <span className="badge-label">{t.multiplier}</span>
-                    <strong>{race.multiplierUsed}x</strong>
-                  </div>
-                  <div>
-                    <span className="badge-label">Finish</span>
-                    <strong>{race.selectedFinishPlace ?? "-"}</strong>
-                  </div>
-                  <div>
-                    <span className="badge-label">{t.net}</span>
-                    {net === null ? (
-                      <strong className="muted">{t.waitingResult}</strong>
-                    ) : (
-                      <strong className={net >= 0 ? "amount-positive" : "amount-negative"}>
-                        {net > 0 ? "+" : ""}
-                        {formatCoins(net, language)}
-                      </strong>
-                    )}
-                  </div>
                 </div>
-                <small className="muted">{formatDate(race.createdAt, language)}</small>
               </article>
-            );
-          })}
-        </div>
-        <div className="table-wrap">
-          <table className="table race-history-table">
-            <thead>
-              <tr>
-                <th>{t.time}</th>
-                <th>{t.race}</th>
-                <th>{t.picked}</th>
-                <th>Bet Type</th>
-                <th>{t.winner}</th>
-                <th>{t.bet}</th>
-                <th>{t.multiplier}</th>
-                <th>{t.payout}</th>
-                <th>{t.net}</th>
-                <th>{t.result}</th>
-                <th>{t.settled}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {races.map((race) => {
-                const net = getRaceNet(race);
-                const raceMeta = formatRaceMeta(race, language);
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-                return (
-                  <tr key={race.id}>
-                    <td>{formatDate(race.createdAt, language)}</td>
-                    <td>
-                      <strong>{race.hkjcRaceName ?? `${t.race} ${race.hkjcRaceNo ?? race.id}`}</strong>
-                      {raceMeta ? <span className="runner-subtext">{raceMeta}</span> : null}
-                    </td>
-                    <td>
-                      <strong>{race.selectedHorse}</strong>
-                      <span className="runner-subtext">{t.no} {race.selectedHorseNo ?? "-"}</span>
-                    </td>
-                    <td>
-                      <strong>{race.betType}</strong>
-                      <span className="runner-subtext">Finish {race.selectedFinishPlace ?? "-"}</span>
-                    </td>
-                    <td>
-                      <strong>{race.winningHorse || t.waitingResult}</strong>
-                      <span className="runner-subtext">{t.no} {race.winningHorseNo ?? "-"}</span>
-                    </td>
-                    <td>{formatCoins(race.betAmount, language)}</td>
-                    <td>{race.multiplierUsed}x</td>
-                    <td>{formatCoins(race.payout, language)}</td>
-                    <td>
-                      {net === null ? (
-                        <span className="muted">{t.waitingResult}</span>
-                      ) : (
-                        <span className={net >= 0 ? "amount-positive" : "amount-negative"}>
-                          {net > 0 ? "+" : ""}
-                          {formatCoins(net, language)}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${resultBadgeClass(race.result)}`}>{resultLabel(language, race.result)}</span>
-                    </td>
-                    <td>{race.settledAt ? formatDate(race.settledAt, language) : "-"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section className="panel">
-        <h2 className="section-title">{t.transactionHistory}</h2>
-        <p className="muted">{t.showingTransactions}</p>
-        <div className="mobile-record-list">
-          {transactions.map((transaction) => (
-            <article className="mobile-record-card" key={transaction.id}>
-              <div className="mobile-record-head">
-                <div>
-                  <strong>{transaction.type}</strong>
-                  <span>{formatDate(transaction.createdAt, language)}</span>
-                </div>
-                <strong className={transaction.amount >= 0 ? "amount-positive" : "amount-negative"}>
-                  {transaction.amount > 0 ? "+" : ""}
-                  {formatCoins(transaction.amount, language)}
-                </strong>
-              </div>
-              <div className="mobile-record-grid">
-                <div>
-                  <span className="badge-label">{t.before}</span>
-                  <strong>{formatCoins(transaction.balanceBefore, language)}</strong>
-                </div>
-                <div>
-                  <span className="badge-label">{t.after}</span>
-                  <strong>{formatCoins(transaction.balanceAfter, language)}</strong>
-                </div>
-                <div>
-                  <span className="badge-label">{t.race}</span>
-                  <strong>{transaction.relatedRaceId ?? "-"}</strong>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t.time}</th>
-                <th>{t.type}</th>
-                <th>{t.amount}</th>
-                <th>{t.before}</th>
-                <th>{t.after}</th>
-                <th>{t.race}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td>{formatDate(transaction.createdAt, language)}</td>
-                  <td>{transaction.type}</td>
-                  <td>{formatCoins(transaction.amount, language)}</td>
-                  <td>{formatCoins(transaction.balanceBefore, language)}</td>
-                  <td>{formatCoins(transaction.balanceAfter, language)}</td>
-                  <td>{transaction.relatedRaceId ?? "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <HistoryMobileSections
+        raceEmptyMessage={t.noRaceHistory}
+        raceSubtitle={t.showingRaces}
+        raceTitle={t.raceHistory}
+        races={historyRaceItems}
+        resultsTabLabel={t.historyResultsTab}
+        transactionEmptyMessage={t.noTransactionHistory}
+        transactionSubtitle={t.showingTransactions}
+        transactionTitle={t.transactionHistory}
+        transactions={historyTransactionItems}
+        transactionsTabLabel={t.historyTransactionsTab}
+      />
     </div>
   );
 }

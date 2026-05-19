@@ -288,7 +288,7 @@ test("HKJC GraphQL parser returns null when only overseas meetings exist", () =>
   assert.equal(raceCard, null);
 });
 
-test("live GraphQL racecards are enriched with runner sex from HKJC HTML", async () => {
+test("live GraphQL racecards are enriched with runner age and sex from HKJC HTML", async () => {
   const previousFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -394,6 +394,7 @@ test("live GraphQL racecards are enriched with runner sex from HKJC HTML", async
       return;
     }
 
+    assert.equal(result.raceCard.runners[0]?.age, "3");
     assert.equal(result.raceCard.runners[0]?.sex, "g");
   } finally {
     globalThis.fetch = previousFetch;

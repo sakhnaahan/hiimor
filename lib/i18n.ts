@@ -58,6 +58,7 @@ export const translations = {
     quinellaOddsUnavailable: "Quinella odds are unavailable right now.",
     gear: "Gear",
     last6: "Last 6",
+    horseAge: "Horse age",
     horseWeight: "Horse Wt.",
     rating: "Rating",
     bestTime: "Best time",
@@ -90,11 +91,14 @@ export const translations = {
     placing: "Placing...",
     placeBetConfirm: "Place bet of {amount} on No. {horseNo} {horseName}?",
     pendingBets: "Pending bets",
+    pendingBetSimple: "Pending",
     picked: "Picked",
     raceHistory: "Race history",
     showingRaces: "Showing races from the last 3 months.",
     transactionHistory: "Transaction history",
     showingTransactions: "Showing transactions from the last 3 months.",
+    historyResultsTab: "Results",
+    historyTransactionsTab: "Transactions",
     time: "Time",
     winner: "Winner",
     bet: "Bet",
@@ -107,6 +111,9 @@ export const translations = {
     amount: "Amount",
     before: "Before",
     after: "After",
+    relatedRace: "Related race",
+    noRaceHistory: "No bet history yet.",
+    noTransactionHistory: "No coin history yet.",
     won: "Won",
     lost: "Lost",
     pending: "Pending",
@@ -214,6 +221,7 @@ export const translations = {
     draw: "Гараа",
     gear: "Хэрэгсэл",
     last6: "Сүүлийн 6",
+    horseAge: "Морины нас",
     horseWeight: "Морины жин",
     rating: "Үнэлгээ",
     bestTime: "Шилдэг цаг",
@@ -228,16 +236,16 @@ export const translations = {
     enterBetAmount: "Бооцооны дүн оруулах",
     max: "Бүгд",
     clear: "Арилгах",
-    placeBet: "Таавар баталгаажуулах",
+    placeBet: "Баталгаажуулах",
     openBetslip: "Таавар",
     hideBetslip: "Хаах ",
     betSlip: "Бооцооны сагс",
     basket: "Сагс",
     addToBetSlip: "Нэмэх",
-    noOfBets: "Бооцооны тоо",
+    noOfBets: "Таавар тоо",
     totalNoOfBets: "Нийт бооцооны тоо",
-    unitBet: "Нэгж бооцоо",
-    betTotal: "Бооцооны нийт",
+    unitBet: "",
+    betTotal: "Нийт",
     totalAmount: "Нийт дүн",
     removeBet: "Бооцоо устгах",
     emptyBetSlip: "Хоосон",
@@ -245,24 +253,30 @@ export const translations = {
     placing: "Тавьж байна...",
     placeBetConfirm:
       "{amount} коиноор No. {horseNo} {horseName} дээр бооцоо тавих уу?",
-    pendingBets: "Дүн хүлээгдэж буй бооцоо",
-    picked: "Сонгосон",
-    raceHistory: "Уралдааны түүх",
-    showingRaces: "Сүүлийн 3 сарын уралдаануудыг харуулж байна.",
+    pendingBets: "Хариу гараагүй таавар",
+    pendingBetSimple: "Хариу гараагүй",
+    picked: "Сонгосон морь",
+    raceHistory: "Тааврын түүх",
+    showingRaces: "Сүүлийн 3 сарын таавар.",
     transactionHistory: "Коины түүх",
-    showingTransactions: "Сүүлийн 3 сарын гүйлгээнүүдийг харуулж байна.",
-    time: "Цаг",
-    winner: "Ялагч",
-    bet: "Бооцоо",
+    showingTransactions: "Сүүлийн 3 сарын коины хөдөлгөөн.",
+    historyResultsTab: "Үр дүн",
+    historyTransactionsTab: "Гүйлгээ",
+    time: "Огноо",
+    winner: "Түрүүлсэн морь",
+    bet: "Тавьсан дүн",
     multiplier: "Коэф.",
     payout: "Олголт",
     net: "Цэвэр",
-    result: "Дүн",
+    result: "Үр дүн",
     settled: "Шийдсэн",
     type: "Төрөл",
     amount: "Дүн",
     before: "Өмнө",
     after: "Дараа",
+    relatedRace: "Холбоотой уралдаан",
+    noRaceHistory: "Одоохондоо тааврын түүх алга.",
+    noTransactionHistory: "Одоохондоо коины түүх алга.",
     won: "Хожсон",
     lost: "Хожигдсон",
     pending: "Хүлээгдэж байна",
@@ -365,6 +379,70 @@ export function resultLabel(language: Language, result: string) {
   }
 
   return result;
+}
+
+export function historyResultLabel(language: Language, result: string) {
+  if (result === "WIN") {
+    return language === "mn" ? "Хожсон" : "Won";
+  }
+
+  if (result === "LOSS") {
+    return language === "mn" ? "Хожигдсон" : "Lost";
+  }
+
+  if (result === "PENDING") {
+    return language === "mn" ? "Хариу гараагүй" : "Pending";
+  }
+
+  return result;
+}
+
+export function betTypeLabel(language: Language, betType: string) {
+  if (betType === "WIN") {
+    return language === "mn" ? "Түрүүлнэ" : "Win";
+  }
+
+  if (betType === "PLACE") {
+    return language === "mn" ? "Айрагдана" : "Place";
+  }
+
+  if (betType === "WIN_PLACE") {
+    return language === "mn" ? "Түрүү + Айраг" : "Win + Place";
+  }
+
+  if (betType === "WIN_PLACE_COMBO") {
+    return language === "mn" ? "Хосолсон таавар" : "Combo bet";
+  }
+
+  if (betType === "QUINELLA") {
+    return language === "mn" ? "Хос морь" : "Quinella";
+  }
+
+  return betType;
+}
+
+export function transactionTypeLabel(language: Language, type: string) {
+  if (type === "BET_PLACED") {
+    return language === "mn" ? "Тааварт тавьсан" : "Bet placed";
+  }
+
+  if (type === "RACE_WIN") {
+    return language === "mn" ? "Тааврын хожоо" : "Race win paid";
+  }
+
+  if (type === "RACE_LOSS") {
+    return language === "mn" ? "Таавар хожоогүй" : "Race lost";
+  }
+
+  if (type === "RECHARGE") {
+    return language === "mn" ? "Коин нэмсэн" : "Coins added";
+  }
+
+  if (type === "ADMIN_SUBTRACT") {
+    return language === "mn" ? "Коин хассан" : "Coins subtracted";
+  }
+
+  return type;
 }
 
 export function roleLabel(language: Language, role: string) {

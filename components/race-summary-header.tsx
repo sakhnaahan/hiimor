@@ -22,6 +22,14 @@ function getMobileBetModeLabel(
   return t.winPlace;
 }
 
+function getBetModeItems(t: ReturnType<typeof getTranslations>) {
+  return [
+    { mode: "win-place" as const, label: t.winPlace },
+    { mode: "combo-wp" as const, label: t.comboWp },
+    { mode: "quinella" as const, label: t.quinella },
+  ];
+}
+
 export function RaceSummaryHeader({
   raceCard,
   raceDetails,
@@ -33,6 +41,7 @@ export function RaceSummaryHeader({
   onOpenBetMenu,
   onCloseBetMenu,
   onSelectBetMode,
+  showBetModeControls,
 }: {
   raceCard: HkjcRaceCard;
   raceDetails: string;
@@ -44,8 +53,10 @@ export function RaceSummaryHeader({
   onOpenBetMenu: () => void;
   onCloseBetMenu: () => void;
   onSelectBetMode: (mode: MobileBetMode) => void;
+  showBetModeControls: boolean;
 }) {
   const t = getTranslations(language);
+  const betModeItems = getBetModeItems(t);
   const compactDetails = [
     raceCard.racecourse,
     raceCard.startTime,
@@ -159,6 +170,25 @@ export function RaceSummaryHeader({
           {raceDetails ? (
             <p className="muted race-summary-desktop-line ">{raceDetails}</p>
           ) : null}
+          {showBetModeControls ? (
+            <div
+              aria-label={t.menu}
+              className="race-wager-switch"
+              role="tablist"
+            >
+              {betModeItems.map((item) => (
+                <button
+                  aria-pressed={mobileBetMode === item.mode}
+                  className={mobileBetMode === item.mode ? "active" : ""}
+                  key={item.mode}
+                  onClick={() => onSelectBetMode(item.mode)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <p className="race-mobile-details">
             {mobileDetailLines.map((line) => (
               <span key={line}>{line}</span>
@@ -167,6 +197,7 @@ export function RaceSummaryHeader({
         </div>
         <RaceCourseMap raceCard={raceCard} />
         <div className="race-mobile-wager" ref={wagerMenuRef}>
+          {showBetModeControls ? (
           <button
             aria-controls={wagerMenuId}
             aria-expanded={mobileBetMenuOpen}
@@ -182,20 +213,15 @@ export function RaceSummaryHeader({
               <FaChevronDown />
             </span>
           </button>
-          {mobileBetMenuOpen ? (
+          ) : null}
+          {showBetModeControls && mobileBetMenuOpen ? (
             <div
               className="race-mobile-wager-menu"
               id={wagerMenuId}
               role="menu"
               style={wagerMenuStyle ?? undefined}
             >
-              {(
-                [
-                  { mode: "win-place", label: t.winPlace },
-                  { mode: "combo-wp", label: t.comboWp },
-                  { mode: "quinella", label: t.quinella },
-                ] as const
-              ).map((item) => (
+              {betModeItems.map((item) => (
                 <button
                   aria-pressed={mobileBetMode === item.mode}
                   className={mobileBetMode === item.mode ? "active" : ""}
