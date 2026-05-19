@@ -947,9 +947,6 @@ export function RaceForm({
                   { label: t.horseWeight, value: runnerHorseWeight },
                   { label: t.rating, value: runner.rating },
                   { label: t.draw, value: runner.draw || "-" },
-                  { label: t.bestTime, value: runner.bestTime },
-                  { label: t.daysSinceLastRun, value: runner.daysSinceLastRun },
-                  { label: t.overWeight, value: runner.overWeight },
                 ];
                 const hasDetailStats = detailStats.some((stat) => stat.value);
                 const statsId = `runner-stats-${runner.horseNo}`;
