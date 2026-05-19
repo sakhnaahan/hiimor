@@ -159,6 +159,36 @@ function getBetTypeLabel(betType: RaceBetType) {
   return "Win - Place";
 }
 
+function getBetSlipBetTypeLabel(
+  betType: RaceBetType,
+  language: Language,
+  t: ReturnType<typeof getTranslations>,
+) {
+  if (language === "mn") {
+    if (betType === "WIN") {
+      return "1";
+    }
+
+    if (betType === "PLACE") {
+      return "2";
+    }
+
+    if (betType === "WIN_PLACE") {
+      return t.winPlace;
+    }
+
+    if (betType === "WIN_PLACE_COMBO") {
+      return t.comboWp;
+    }
+
+    if (betType === "QUINELLA") {
+      return t.quinella;
+    }
+  }
+
+  return getBetTypeLabel(betType);
+}
+
 function getRunnerBetButtonLabels(language: Language) {
   if (language === "mn") {
     return {
@@ -1266,10 +1296,10 @@ export function RaceForm({
                                   : item.selectedLegHorseNos?.length
                                     ? `>${item.selectedLegHorseNos.join("+")}`
                                     : ""
-                              } ${getBetTypeLabel(item.betType)}`,
-                          )
-                          .join(" / ")
-                      : t.emptyBetSlip}
+                              } ${getBetSlipBetTypeLabel(item.betType, language, t)}`,
+                           )
+                           .join(" / ")
+                       : t.emptyBetSlip}
                   </small>
                 </button>
                 <div className="bet-slip-mobile-metric">
@@ -1326,7 +1356,7 @@ export function RaceForm({
                           </button>
                           <div className="basket-item-main">
                             <span className="muted">
-                              {raceCard.racecourse} / {t.race} {raceCard.raceNo}
+                              {t.race} {raceCard.raceNo}
                             </span>
                             <strong>
                               {item.horseNo} {item.horseName}
@@ -1343,7 +1373,10 @@ export function RaceForm({
                                 {item.placeHorseNo} {item.placeHorseName}
                               </strong>
                             ) : null}
-                            <span>{getBetTypeLabel(item.betType)}</span>
+                            <span>
+                              {t.betTypeText}:{" "}
+                              {getBetSlipBetTypeLabel(item.betType, language, t)}
+                            </span>
                           </div>
                           <div className="basket-item-stake">
                             <label htmlFor={`basket-stake-${item.id}`}>
@@ -1377,11 +1410,11 @@ export function RaceForm({
                                           item.quotedQuinellaOdds?.[
                                             legHorseNo
                                           ] ?? "-";
-                                        return `Q ${runner.horseNo}-${legHorseNo} ${odds}x`;
+                                        return `${runner.horseNo}-${legHorseNo} ${odds}x`;
                                       })
                                       .join(" / ")
                                   : item.betType === "WIN_PLACE_COMBO"
-                                  ? `W ${getRunnerLockedWinOdds(runner) ?? "-"}x / P ${getRunnerLockedPlaceOdds(placeRunner) ?? "-"}x`
+                                  ? `${getRunnerLockedWinOdds(runner) ?? "-"}x / ${getRunnerLockedPlaceOdds(placeRunner) ?? "-"}x`
                                   : getBetLineTypes(item.betType)
                                       .map((lineType) => {
                                         const odds =
@@ -1390,7 +1423,7 @@ export function RaceForm({
                                             : getRunnerLockedPlaceOdds(runner);
                                         return odds === null
                                           ? "-"
-                                          : `${lineType[0]} ${odds}x`;
+                                          : `${odds}x`;
                                       })
                                       .join(" / ")}
                               </span>

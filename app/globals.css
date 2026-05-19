@@ -3453,10 +3453,10 @@ textarea {
     background: #102f6d;
     color: white;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: space-between;
-    min-height: 72px;
-    padding: 14px 16px;
+    min-height: 62px;
+    padding: 10px 14px;
   }
 
   .bet-slip-panel-top strong {
@@ -3470,10 +3470,10 @@ textarea {
     border-radius: 999px;
     color: white;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 900;
-    min-height: 38px;
-    padding: 5px 14px;
+    min-height: 34px;
+    padding: 4px 12px;
   }
 
   .bet-slip > .bet-slip-tabs {
@@ -3486,13 +3486,13 @@ textarea {
   .bet-slip-tabs button {
     background: transparent;
     border: 0;
-    border-bottom: 4px solid transparent;
+    border-bottom: 3px solid transparent;
     color: #0b315f;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 900;
-    min-height: 54px;
-    padding: 9px 6px;
+    min-height: 46px;
+    padding: 7px 6px;
   }
 
   .bet-slip-tabs button.active {
@@ -3505,12 +3505,12 @@ textarea {
     border-radius: 999px;
     color: white;
     display: inline-flex;
-    font-size: 15px;
-    height: 28px;
+    font-size: 14px;
+    height: 26px;
     justify-content: center;
     margin-left: 4px;
-    min-width: 28px;
-    padding: 0 7px;
+    min-width: 26px;
+    padding: 0 6px;
   }
 
   .bet-slip-mobile-summary {
@@ -3574,13 +3574,15 @@ textarea {
 
   .basket-slip-body {
     display: grid;
-    gap: 8px;
+    gap: 6px;
     overflow: auto;
-    padding: 10px 8px 0;
+    padding: 8px 7px 0;
   }
 
   .basket-item-list {
-    gap: 8px;
+    align-content: start;
+    align-items: start;
+    gap: 6px;
   }
 
   .basket-item-card {
@@ -3589,48 +3591,62 @@ textarea {
     border: 1px solid #dedede;
     border-radius: 6px;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
-    gap: 10px;
-    grid-template-columns: minmax(0, 1fr) 102px;
-    padding: 12px;
+    gap: 10px 10px;
+    grid-template-columns: minmax(0, 1fr) 96px;
+    min-height: 136px;
+    padding: 10px 10px 14px;
+    position: relative;
+    width: 100%;
   }
 
   .basket-remove-button {
+    align-items: center;
     background: transparent;
     color: #0b3b78;
-    font-size: 22px;
-    grid-column: 2;
-    grid-row: 1;
-    height: 34px;
-    justify-self: end;
-    width: 34px;
+    display: inline-flex;
+    font-size: 20px;
+    height: 26px;
+    justify-content: center;
+    position: absolute;
+    right: 4px;
+    top: 2px;
+    width: 26px;
   }
 
   .basket-item-main {
     color: #0b315f;
-    font-size: 16px;
+    font-size: 15px;
     grid-column: 1 / -1;
-    padding-right: 40px;
+    grid-row: 2;
+    gap: 2px;
+    min-height: 88px;
+    padding-right: 110px;
   }
 
   .basket-item-main .muted {
     color: #333;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
+    line-height: 1.15;
   }
 
   .basket-item-main strong {
-    font-size: 17px;
-    line-height: 1.2;
+    font-size: 16px;
+    line-height: 1.15;
   }
 
   .basket-item-stake {
-    grid-column: 2;
-    grid-row: 2;
+    bottom: 14px;
+    gap: 3px;
+    position: absolute;
+    right: 10px;
+    width: 96px;
   }
 
   .basket-item-stake label {
     color: #333;
-    font-size: 13px;
+    display: none;
+    font-size: 12px;
     text-align: right;
   }
 
@@ -3639,17 +3655,19 @@ textarea {
     border: 1px solid #333;
     border-radius: 4px;
     color: #111;
-    font-size: 18px;
-    min-height: 42px;
-    padding: 5px 8px;
+    font-size: 17px;
+    min-height: 38px;
+    padding: 4px 7px;
   }
 
   .basket-item-total {
     color: #333;
-    font-size: 15px;
-    gap: 6px;
+    font-size: 16px;
+    gap: 4px;
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
+    line-height: 1.2;
+    padding-top: 18px;
     padding-left: 0;
   }
 
@@ -3661,13 +3679,13 @@ textarea {
   .basket-slip-totals {
     background: white;
     border-top: 1px solid #d5d5d5;
-    gap: 8px;
-    margin: 0 -8px;
-    padding: 12px 18px 8px;
+    gap: 6px;
+    margin: 0 -7px;
+    padding: 10px 16px 6px;
   }
 
   .basket-slip-totals > div {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .basket-slip-totals strong {
@@ -3698,9 +3716,9 @@ textarea {
   .basket-slip-actions {
     background: white;
     display: grid;
-    gap: 10px;
+    gap: 8px;
     grid-template-columns: 92px minmax(0, 1fr);
-    padding: 10px 18px 16px;
+    padding: 8px 16px 12px;
   }
 
   .basket-clear-button {
@@ -3708,7 +3726,7 @@ textarea {
     border: 0;
     border-radius: 999px;
     color: white;
-    min-height: 46px;
+    min-height: 44px;
   }
 
   .summary-row {
