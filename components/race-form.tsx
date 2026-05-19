@@ -62,29 +62,31 @@ type PendingBetSelection = BasketItem & {
   raceNo: number;
 };
 
-function RunnerFact({ label, value }: { label: string; value?: string }) {
+function RunnerStatTile({ label, value }: { label: string; value?: string }) {
   if (!value) {
     return null;
   }
 
   return (
-    <div className="runner-fact">
-      <span className="runner-fact-label">{label}: </span>
+    <div className="runner-stat-tile">
+      <span className="runner-stat-label">{label}</span>
       <strong>{value}</strong>
     </div>
   );
 }
 
-function RunnerLast6Fact({ label, value }: { label: string; value?: string }) {
+function RunnerLast6Panel({ label, value }: { label: string; value?: string }) {
   const finishes = formatRunnerLast6Runs(value);
   if (finishes.length === 0) {
     return null;
   }
 
   return (
-    <div className="runner-fact is-last6">
-      <span className="runner-fact-label">{label}: </span>
-      <span className="runner-last6-list">
+    <div className="runner-detail-panel runner-detail-last6-panel">
+      <div className="runner-detail-panel-header">
+        <span className="runner-detail-panel-title">{label}</span>
+      </div>
+      <div className="runner-last6-list">
         {finishes.map((finish, index) => (
           <span
             className={`runner-last6-chip ${finish.isHighlighted ? "is-highlighted" : ""}`}
@@ -93,7 +95,7 @@ function RunnerLast6Fact({ label, value }: { label: string; value?: string }) {
             {finish.value}
           </span>
         ))}
-      </span>
+      </div>
     </div>
   );
 }
@@ -910,202 +912,205 @@ export function RaceForm({
                   runner.horseWeight,
                   language,
                 );
-                const extraStats = [
+                const detailStats = [
                   { label: t.horseAge, value: runner.age },
                   { label: t.horseWeight, value: runnerHorseWeight },
                   { label: t.rating, value: runner.rating },
+                  { label: t.draw, value: runner.draw || "-" },
                   { label: t.bestTime, value: runner.bestTime },
                   { label: t.daysSinceLastRun, value: runner.daysSinceLastRun },
                   { label: t.overWeight, value: runner.overWeight },
-                  { label: t.last6, value: runner.last6Runs },
                 ];
-                const hasExtraStats = extraStats.some((stat) => stat.value);
-                const signals = getRunnerStatSignals(raceCard, runner, language);
+                const hasDetailStats = detailStats.some((stat) => stat.value);
                 const statsId = `runner-stats-${runner.horseNo}`;
+                const runnerOddsContent = quinellaMode ? (
+                  <>
+                    <button
+                      aria-label="Banker"
+                      aria-pressed={quinellaBankerSelected}
+                      className={quinellaBankerSelected ? "active" : ""}
+                      disabled={!quinellaAvailable}
+                      onClick={() => handleSelectQuinellaBanker(runner)}
+                      type="button"
+                    >
+                      <b>1</b>
+                    </button>
+                    <button
+                      aria-label="Leg"
+                      aria-pressed={quinellaLegSelected}
+                      className={quinellaLegSelected ? "active" : ""}
+                      disabled={
+                        !quinellaAvailable ||
+                        (quinellaDraft.legHorseNos.length >= 5 &&
+                          !quinellaLegSelected)
+                      }
+                      onClick={() => handleToggleQuinellaLeg(runner)}
+                      type="button"
+                    >
+                      <b>2</b>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      aria-pressed={
+                        selectionMode === "combo" ? comboWinSelected : winSelected
+                      }
+                      className={
+                        (selectionMode === "combo" ? comboWinSelected : winSelected)
+                          ? "active"
+                          : ""
+                      }
+                      disabled={winDisabled}
+                      onClick={() =>
+                        selectionMode === "combo"
+                          ? selectComboWin(runner)
+                          : addBasketItem(runner, "WIN")
+                      }
+                      type="button"
+                    >
+                      <b>{runnerBetButtonLabels.win}</b>
+                      {runner.oddsAvailable && runner.winOdds
+                        ? runner.winOdds
+                        : "---"}
+                    </button>
+                    <button
+                      aria-pressed={
+                        selectionMode === "combo"
+                          ? comboPlaceSelected
+                          : placeSelected
+                      }
+                      className={
+                        (
+                          selectionMode === "combo"
+                            ? comboPlaceSelected
+                            : placeSelected
+                        )
+                          ? "active"
+                          : ""
+                      }
+                      disabled={placeDisabled}
+                      onClick={() =>
+                        selectionMode === "combo"
+                          ? selectComboPlace(runner)
+                          : addBasketItem(runner, "PLACE")
+                      }
+                      type="button"
+                    >
+                      <b>{runnerBetButtonLabels.place}</b>
+                      {runner.placeOddsAvailable && runner.placeOdds
+                        ? runner.placeOdds
+                        : "---"}
+                    </button>
+                    <button
+                      aria-pressed={winPlaceSelected}
+                      className={winPlaceSelected ? "active" : ""}
+                      disabled={selectionMode === "combo" || winPlaceDisabled}
+                      onClick={() => addBasketItem(runner, "WIN_PLACE")}
+                      type="button"
+                    >
+                      <b>{runnerBetButtonLabels.winPlace}</b>
+                    </button>
+                  </>
+                );
 
                 return (
                   <article
-                    className={`runner-row ${selected ? "is-selected" : ""}`}
+                    className={`runner-row ${selected ? "is-selected" : ""} ${
+                      expanded ? "is-expanded" : ""
+                    }`}
                     key={`${runner.horseNo}-${runner.brandNo}`}
                   >
-                    <div className="runner-row-main">
-                      <span
-                        className="runner-rail"
-                        onClick={() => toggleExpandedHorse(runner.horseNo)}
-                      >
-                        <strong>{runner.horseNo}</strong>
-                        <SilkPlaceholder horseNo={runner.horseNo} />
-                      </span>
-                      <span
-                        className="runner-core"
-                        onClick={() => toggleExpandedHorse(runner.horseNo)}
-                      >
-                        <strong>{runner.name}</strong>
-                        <span className="runner-people">
-                          <span>
-                            <b>У</b> {runner.jockey || "-"}
-                          </span>
-                          <span>
-                            <b>Уя</b> {runner.trainer || "-"}
-                          </span>
-                          <span>
-                            <b>{t.draw}</b> {runner.draw || "-"}
-                          </span>
+                    {!expanded ? (
+                      <div className="runner-row-main">
+                        <span
+                          className="runner-rail"
+                          onClick={() => toggleExpandedHorse(runner.horseNo)}
+                        >
+                          <strong>{runner.horseNo}</strong>
+                          <SilkPlaceholder horseNo={runner.horseNo} />
                         </span>
-                        {runner.hotFavourite ? (
-                          <span className="runner-hot">{t.hotFavourite}</span>
-                        ) : null}
-                      </span>
-                      <span
-                        className={`runner-odds-grid ${quinellaMode ? "is-quinella-grid" : ""}`}
-                      >
-                        {quinellaMode ? (
-                          <>
-                            <button
-                              aria-label="Banker"
-                              aria-pressed={quinellaBankerSelected}
-                              className={quinellaBankerSelected ? "active" : ""}
-                              disabled={!quinellaAvailable}
-                              onClick={() => handleSelectQuinellaBanker(runner)}
-                              type="button"
-                            >
-                              <b>1</b>
-                            </button>
-                            <button
-                              aria-label="Leg"
-                              aria-pressed={quinellaLegSelected}
-                              className={quinellaLegSelected ? "active" : ""}
-                              disabled={
-                                !quinellaAvailable ||
-                                (quinellaDraft.legHorseNos.length >= 5 &&
-                                  !quinellaLegSelected)
-                              }
-                              onClick={() => handleToggleQuinellaLeg(runner)}
-                              type="button"
-                            >
-                              <b>2</b>
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              aria-pressed={
-                                selectionMode === "combo"
-                                  ? comboWinSelected
-                                  : winSelected
-                              }
-                              className={
-                                (
-                                  selectionMode === "combo"
-                                    ? comboWinSelected
-                                    : winSelected
-                                )
-                                  ? "active"
-                                  : ""
-                              }
-                              disabled={winDisabled}
-                              onClick={() =>
-                                selectionMode === "combo"
-                                  ? selectComboWin(runner)
-                                  : addBasketItem(runner, "WIN")
-                              }
-                              type="button"
-                            >
-                              <b>{runnerBetButtonLabels.win}</b>
-                              {runner.oddsAvailable && runner.winOdds
-                                ? runner.winOdds
-                                : "---"}
-                            </button>
-                            <button
-                              aria-pressed={
-                                selectionMode === "combo"
-                                  ? comboPlaceSelected
-                                  : placeSelected
-                              }
-                              className={
-                                (
-                                  selectionMode === "combo"
-                                    ? comboPlaceSelected
-                                    : placeSelected
-                                )
-                                  ? "active"
-                                  : ""
-                              }
-                              disabled={placeDisabled}
-                              onClick={() =>
-                                selectionMode === "combo"
-                                  ? selectComboPlace(runner)
-                                  : addBasketItem(runner, "PLACE")
-                              }
-                              type="button"
-                            >
-                              <b>{runnerBetButtonLabels.place}</b>
-                              {runner.placeOddsAvailable && runner.placeOdds
-                                ? runner.placeOdds
-                                : "---"}
-                            </button>
-                            <button
-                              aria-pressed={winPlaceSelected}
-                              className={winPlaceSelected ? "active" : ""}
-                              disabled={
-                                selectionMode === "combo" || winPlaceDisabled
-                              }
-                              onClick={() => addBasketItem(runner, "WIN_PLACE")}
-                              type="button"
-                            >
-                              <b>{runnerBetButtonLabels.winPlace}</b>
-                            </button>
-                          </>
-                        )}
-                      </span>
-                      <button
-                        aria-label={expanded ? t.hideStats : t.moreStats}
-                        aria-controls={statsId}
-                        aria-expanded={expanded}
-                        className="runner-expand"
-                        onClick={() => toggleExpandedHorse(runner.horseNo)}
-                        type="button"
-                      >
-                        {expanded ? <FaChevronUp /> : <FaChevronDown />}
-                      </button>
-                      <span className="runner-select-dot" aria-hidden="true" />
-                    </div>
+                        <span
+                          className="runner-core"
+                          onClick={() => toggleExpandedHorse(runner.horseNo)}
+                        >
+                          <strong>{runner.name}</strong>
+                          <span className="runner-people">
+                            <span>
+                              <b>У</b> {runner.jockey || "-"}
+                            </span>
+                            <span>
+                              <b>Уя</b> {runner.trainer || "-"}
+                            </span>
+                            <span>
+                              <b>{t.draw}</b> {runner.draw || "-"}
+                            </span>
+                          </span>
+                          {runner.hotFavourite ? (
+                            <span className="runner-hot">{t.hotFavourite}</span>
+                          ) : null}
+                        </span>
+                        <span
+                          className={`runner-odds-grid ${quinellaMode ? "is-quinella-grid" : ""}`}
+                        >
+                          {runnerOddsContent}
+                        </span>
+                        <button
+                          aria-label={t.moreStats}
+                          aria-controls={statsId}
+                          aria-expanded={expanded}
+                          className="runner-expand"
+                          onClick={() => toggleExpandedHorse(runner.horseNo)}
+                          type="button"
+                        >
+                          <FaChevronDown />
+                        </button>
+                        <span className="runner-select-dot" aria-hidden="true" />
+                      </div>
+                    ) : null}
                     {expanded ? (
                       <div className="runner-detail-card" id={statsId}>
-                        <div className="runner-detail-main">
-                          <div className="runner-secondary-facts">
-                            {hasExtraStats ? (
-                              extraStats.map((stat) => (
-                                stat.label === t.last6 ? (
-                                  <RunnerLast6Fact
-                                    key={stat.label}
-                                    label={stat.label}
-                                    value={stat.value}
-                                  />
-                                ) : (
-                                  <RunnerFact
-                                    key={stat.label}
-                                    label={stat.label}
-                                    value={stat.value}
-                                  />
-                                )
-                              ))
-                            ) : (
-                              <span className="muted">{t.noExtraStats}</span>
-                            )}
-                          </div>
-                          {signals.length ? (
-                            <div className="runner-signals">
-                              {signals.map((signal) => (
-                                <span
-                                  className={`runner-signal ${signal.tone}`}
-                                  key={signal.label}
-                                >
-                                  {signal.label}
-                                </span>
-                              ))}
+                        <div className="runner-detail-hero">
+                          <div className="runner-detail-summary">
+                            <div className="runner-detail-badge">
+                              <strong>{runner.horseNo}</strong>
+                              <SilkPlaceholder horseNo={runner.horseNo} />
                             </div>
-                          ) : null}
+                            <div className="runner-detail-copy">
+                              <div className="runner-detail-summary-top">
+                                <div className="runner-detail-title-block">
+                                  <div className="runner-detail-title-row">
+                                    <strong>{runner.name}</strong>
+                                    {runner.hotFavourite ? (
+                                      <span className="runner-hot runner-detail-hot">
+                                        {t.hotFavourite}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  {runner.brandNo ? (
+                                    <span className="runner-detail-brand">
+                                      {runner.brandNo}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div
+                                  className={`runner-detail-odds ${quinellaMode ? "is-quinella-grid" : ""}`}
+                                >
+                                  {runnerOddsContent}
+                                </div>
+                              </div>
+                              <div className="runner-detail-meta">
+                                <span className="runner-detail-meta-item">
+                                  <b>Унаач</b>
+                                  <span>{runner.jockey || "-"}</span>
+                                </span>
+                                <span className="runner-detail-meta-item">
+                                  <b>Уяач</b>
+                                  <span>{runner.trainer || "-"}</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         <div className="runner-detail-side" aria-hidden="true">
                           <img
@@ -1113,6 +1118,44 @@ export function RaceForm({
                             className="runner-detail-horse-image"
                             src="/images/horse-placeholder.png"
                           />
+                        </div>
+                        <div className="runner-detail-panels">
+                          <div className="runner-detail-panel">
+                            <div className="runner-detail-panel-header">
+                              <span className="runner-detail-panel-title">
+                                {t.moreStats}
+                              </span>
+                            </div>
+                            {hasDetailStats ? (
+                              <div className="runner-detail-fact-grid">
+                                {detailStats.map((stat) => (
+                                  <RunnerStatTile
+                                    key={stat.label}
+                                    label={stat.label}
+                                    value={stat.value}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="muted">{t.noExtraStats}</span>
+                            )}
+                          </div>
+                          <RunnerLast6Panel
+                            label={t.last6}
+                            value={runner.last6Runs}
+                          />
+                          <div className="runner-detail-actions">
+                            <button
+                              aria-label={t.hideStats}
+                              aria-controls={statsId}
+                              aria-expanded={expanded}
+                              className="runner-detail-collapse"
+                              onClick={() => toggleExpandedHorse(runner.horseNo)}
+                              type="button"
+                            >
+                              <FaChevronUp />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : null}

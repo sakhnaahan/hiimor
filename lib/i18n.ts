@@ -220,7 +220,7 @@ export const translations = {
     jockey: "Жокей (Jockey)",
     draw: "Гараа",
     gear: "Хэрэгсэл",
-    last6: "Сүүлийн 6",
+    last6: "Сүүлийн 6 уралдаан",
     horseAge: "Морины нас",
     horseWeight: "Морины жин",
     rating: "Үнэлгээ",

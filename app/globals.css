@@ -768,84 +768,57 @@ textarea {
   padding: 3px 8px;
 }
 
-.runner-secondary-facts {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
+.runner-stat-tile {
+  background: white;
+  border: 1px solid rgba(11, 59, 120, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(11, 59, 120, 0.08);
   display: grid;
-  gap: 8px;
-  margin-top: 0;
-  padding: 0;
-}
-
-.runner-fact {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-start;
+  gap: 6px;
   min-width: 0;
+  padding: 14px 15px;
+}
+
+.runner-stat-label {
+  color: #6b7280;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.runner-stat-tile strong {
+  color: #0b315f;
+  font-size: 27px;
+  line-height: 1;
   overflow-wrap: anywhere;
-}
-
-.runner-fact.is-last6 {
-  align-items: flex-start;
-}
-
-.runner-fact-label {
-  flex: 0 0 auto;
 }
 
 .runner-last6-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 6px;
 }
 
 .runner-last6-chip {
   align-items: center;
-  background: #e5e7eb;
-  border-radius: 6px;
+  background: #edf1f6;
+  border-radius: 9px;
   color: #111827;
   display: inline-flex;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   justify-content: center;
   line-height: 1;
-  min-height: 22px;
-  min-width: 22px;
-  padding: 0 5px;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0 8px;
 }
 
 .runner-last6-chip.is-highlighted {
   background: #c9962c;
   color: white;
-}
-
-.runner-signals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.runner-signal {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  display: inline-flex;
-  font-size: 11px;
-  font-weight: 800;
-  margin: 0 6px 6px 0;
-  padding: 3px 7px;
-}
-
-.runner-signal.positive {
-  border-color: var(--success-border);
-  color: var(--success-strong);
-}
-
-.runner-signal.warning {
-  border-color: rgba(159, 45, 58, 0.32);
-  color: var(--red);
 }
 
 .summary-row {
@@ -1174,6 +1147,14 @@ textarea {
   box-shadow: 0 0 0 2px var(--brand-ring);
 }
 
+.runner-row.is-expanded .runner-row-main {
+  grid-template-columns: 64px max-content 10px;
+}
+
+.runner-row.is-expanded .runner-odds-grid {
+  justify-self: end;
+}
+
 .runner-row-main {
   align-items: stretch;
   display: grid;
@@ -1397,22 +1378,246 @@ textarea {
 }
 
 .runner-detail-card {
-  background: linear-gradient(110deg, var(--brand-soft), #ffffff);
-  border-top: 1px solid var(--line);
+  background:
+    linear-gradient(160deg, #f4f9ff 0%, #ffffff 38%, #eef5fb 100%);
+  border-top: 1px solid rgba(11, 59, 120, 0.14);
+  border-radius: 0 0 18px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) 180px;
-  padding: 14px 16px 16px 64px;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-areas:
+    "hero side"
+    "panels side";
+  padding: 20px 22px 22px 64px;
 }
 
-.runner-detail-main {
+.runner-detail-hero {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-area: hero;
+}
+
+.runner-detail-summary {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 88px minmax(0, 1fr);
+}
+
+.runner-detail-badge {
+  align-items: center;
+  background: linear-gradient(180deg, #ffffff 0%, #edf4fb 100%);
+  border: 1px solid rgba(11, 59, 120, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(11, 59, 120, 0.08);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 128px;
+  padding: 14px 8px;
+}
+
+.runner-detail-badge strong {
+  color: #0b315f;
+  font-size: 58px;
+  line-height: 0.9;
+}
+
+.runner-detail-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.runner-detail-summary-top {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 212px;
+}
+
+.runner-detail-title-block {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.runner-detail-title-row {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  justify-content: space-between;
+}
+
+.runner-detail-title-row strong {
+  color: #0b315f;
+  font-size: 34px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.runner-detail-hot {
+  margin-left: auto;
+}
+
+.runner-detail-brand {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.runner-detail-odds {
+  align-self: start;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.runner-detail-odds.is-quinella-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runner-detail-odds > button {
+  align-content: center;
+  background: #dfeaf5;
+  border: 0;
+  border-radius: 12px;
+  color: #0b315f;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  font-weight: 800;
+  justify-items: center;
+  min-height: 88px;
+  padding: 8px 6px;
+}
+
+.runner-detail-odds > button.active {
+  background: #0b3b78;
+  color: white;
+}
+
+.runner-detail-odds > button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.runner-detail-odds > button b {
+  color: currentColor;
+  font-size: 20px;
+}
+
+.runner-detail-meta {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runner-detail-meta-item {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(11, 59, 120, 0.12);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.runner-detail-meta-item b {
+  align-items: center;
+  background: #dfe7f0;
+  border-radius: 7px;
+  color: #0b315f;
+  display: inline-flex;
+  font-size: 13px;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 8px;
+}
+
+.runner-detail-meta-item span {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.runner-detail-panels {
+  display: grid;
+  gap: 16px;
+  grid-area: panels;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.95fr);
+}
+
+.runner-detail-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(11, 59, 120, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 34px rgba(11, 59, 120, 0.08);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.runner-detail-panel-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.runner-detail-panel-title {
+  color: #0b315f;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.runner-detail-fact-grid {
   display: grid;
   gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runner-detail-last6-panel {
+  align-content: start;
+}
+
+.runner-detail-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.runner-detail-collapse {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(11, 59, 120, 0.16);
+  border-radius: 12px;
+  color: #0b3b78;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 20px;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
 }
 
 .runner-detail-side {
   align-items: start;
   display: flex;
+  grid-area: side;
   justify-content: center;
   min-height: 100%;
 }
@@ -1420,8 +1625,8 @@ textarea {
 .runner-detail-horse-image {
   display: block;
   height: auto;
-  max-height: 200px;
-  max-width: 220px;
+  max-height: 300px;
+  max-width: 240px;
   object-fit: contain;
   width: 100%;
 }
@@ -2114,6 +2319,10 @@ textarea {
     min-height: 92px;
   }
 
+  .runner-row.is-expanded .runner-row-main {
+    grid-template-columns: 56px max-content 10px;
+  }
+
   .runner-rail {
     padding: 8px 4px;
   }
@@ -2140,13 +2349,36 @@ textarea {
   }
 
   .runner-detail-card {
-    grid-template-columns: minmax(0, 1fr) 148px;
-    padding-left: 56px;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 160px;
+    padding: 18px 18px 20px 56px;
+  }
+
+  .runner-detail-summary-top {
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 172px;
+  }
+
+  .runner-detail-odds > button {
+    min-height: 74px;
+  }
+
+  .runner-detail-odds > button b {
+    font-size: 18px;
+  }
+
+  .runner-detail-meta {
+    grid-template-columns: 1fr;
   }
 
   .runner-detail-horse-image {
-    max-height: 148px;
-    max-width: 148px;
+    max-height: 220px;
+    max-width: 160px;
+  }
+
+  .runner-detail-collapse {
+    height: 40px;
+    width: 40px;
   }
 }
 
@@ -2162,6 +2394,30 @@ textarea {
 
   .race-wager-switch {
     max-width: none;
+  }
+
+  .runner-detail-summary {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .runner-detail-badge {
+    min-height: 112px;
+  }
+
+  .runner-detail-badge strong {
+    font-size: 48px;
+  }
+
+  .runner-detail-title-row strong {
+    font-size: 28px;
+  }
+
+  .runner-detail-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .runner-detail-panels {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2778,6 +3034,10 @@ textarea {
     position: relative;
   }
 
+  .runner-row.is-expanded .runner-row-main {
+    grid-template-columns: 46px max-content;
+  }
+
   .runner-rail {
     grid-row: 1;
     gap: 3px;
@@ -2931,19 +3191,142 @@ textarea {
   }
 
   .runner-detail-card {
+    gap: 14px;
+    grid-template-areas:
+      "hero"
+      "side"
+      "panels";
+    grid-template-columns: 1fr;
+    padding: 16px 14px 18px;
+  }
+
+  .runner-detail-side {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .runner-detail-summary {
+    gap: 12px;
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .runner-detail-summary-top {
     gap: 10px;
-    grid-template-columns: minmax(0, 1fr) 112px;
+    grid-template-columns: 1fr;
+  }
+
+  .runner-detail-badge {
+    border-radius: 14px;
+    gap: 6px;
+    min-height: 92px;
+    padding: 10px 6px;
+  }
+
+  .runner-detail-badge strong {
+    font-size: 42px;
+  }
+
+  .runner-detail-title-row {
+    gap: 8px;
+  }
+
+  .runner-detail-title-row strong {
+    font-size: 24px;
+  }
+
+  .runner-detail-brand {
+    font-size: 12px;
+  }
+
+  .runner-detail-odds {
+    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .runner-detail-odds > button {
+    border-radius: 10px;
+    min-height: 58px;
+    padding: 6px 4px;
+  }
+
+  .runner-detail-odds > button b {
+    font-size: 15px;
+  }
+
+  .runner-detail-meta {
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .runner-detail-meta-item {
+    padding: 8px 10px;
+  }
+
+  .runner-detail-meta-item b {
+    font-size: 12px;
+    height: 24px;
+    min-width: 24px;
+  }
+
+  .runner-detail-meta-item span {
+    font-size: 14px;
+  }
+
+  .runner-detail-panels {
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .runner-detail-panel {
+    border-radius: 16px;
+    gap: 12px;
     padding: 14px;
+  }
+
+  .runner-detail-actions {
+    margin-top: -2px;
+  }
+
+  .runner-detail-panel-title {
+    font-size: 13px;
+  }
+
+  .runner-detail-fact-grid {
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .runner-stat-tile {
+    border-radius: 12px;
+    gap: 5px;
+    padding: 12px;
+  }
+
+  .runner-stat-label {
+    font-size: 11px;
+  }
+
+  .runner-stat-tile strong {
+    font-size: 22px;
   }
 
   .runner-detail-side {
     align-items: start;
-    display: flex;
+    padding-top: 2px;
   }
 
   .runner-detail-horse-image {
-    max-height: 112px;
-    max-width: 112px;
+    max-height: 180px;
+    max-width: 180px;
+  }
+
+  .runner-detail-collapse {
+    border-radius: 10px;
+    font-size: 19px;
+    height: 38px;
+    width: 38px;
   }
 
   .racecard-form-header {
@@ -2953,18 +3336,6 @@ textarea {
   .runner-hot {
     font-size: 11px;
     padding: 3px 7px;
-  }
-
-  .runner-signals {
-    display: none;
-  }
-
-  .runner-signal {
-    margin: 0;
-  }
-
-  .runner-secondary-facts {
-    margin-top: 0;
   }
 
   .bet-confirm-sheet {
