@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logoutAction } from "@/app/actions";
-import { LanguageSwitch } from "@/components/language-switch";
 import { getTranslations, type Language } from "@/lib/i18n";
 
 export function AdminMobileMenu({ language }: { language: Language }) {
@@ -13,7 +12,6 @@ export function AdminMobileMenu({ language }: { language: Language }) {
   const t = getTranslations(language);
   const links = [
     { href: "/admin", label: t.adminOverview },
-    { href: "/race", label: t.navRace },
     { href: "/admin/users", label: t.users },
     { href: "/admin/bets", label: t.bets },
     { href: "/admin/transactions", label: t.transactions },
@@ -52,7 +50,6 @@ export function AdminMobileMenu({ language }: { language: Language }) {
             })}
           </nav>
           <div className="admin-menu-footer">
-            <LanguageSwitch language={language} label={t.selectedLanguage} />
             <form action={logoutAction}>
               <button className="link-button" type="submit">
                 {t.logout}

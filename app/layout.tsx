@@ -39,8 +39,7 @@ export default async function RootLayout({
                     <span className="nav-balance">
                       {t.balance}: {formatCoins(user.coinBalance, language)}
                     </span>
-                    <Link href="/race">{t.navRace}</Link>
-                    <Link href="/history">{t.navHistory}</Link>
+                    {user.role === "admin" ? null : <Link href="/history">{t.navHistory}</Link>}
                     <Link href="/account">{t.navAccount}</Link>
                     {user.role === "admin" ? <Link href="/admin">{t.navAdmin}</Link> : null}
                   </>
@@ -50,7 +49,7 @@ export default async function RootLayout({
                     <Link href="/signup">{t.navSignup}</Link>
                   </>
                 )}
-                <LanguageSwitch language={language} label={t.selectedLanguage} />
+                {isAdmin ? null : <LanguageSwitch language={language} label={t.selectedLanguage} />}
               </nav>
               {isAdmin ? <AdminMobileMenu language={language} /> : null}
             </div>

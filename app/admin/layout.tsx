@@ -12,7 +12,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="grid">
       <nav className="nav">
         <Link href="/admin">{t.adminOverview}</Link>
-        <Link href="/race">{t.navRace}</Link>
         <Link href="/admin/users">{t.users}</Link>
         <Link href="/admin/bets">{t.bets}</Link>
         <Link href="/admin/transactions">{t.transactions}</Link>
