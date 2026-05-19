@@ -577,6 +577,10 @@ function isMissingHtmlRunnerDetails(raceCard: HkjcRaceCard) {
   );
 }
 
+function canServeFreshStoredRaceCard(raceCard: HkjcRaceCard) {
+  return !isLocalMainRaceCard(raceCard) && !isMissingHtmlRunnerDetails(raceCard);
+}
+
 async function enrichRaceCardWithHtmlRunnerDetails(raceCard: HkjcRaceCard) {
   if (isLocalMainRaceCard(raceCard)) {
     return raceCard;
@@ -1136,7 +1140,7 @@ function inferSnapshotStatus(raceCard: HkjcRaceCard) {
 
 export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promise<HkjcRaceCardResult> {
   const stored = await readStoredHkjcRaceCard(request).catch(() => null);
-  if (stored?.isFresh && !isMissingHtmlRunnerDetails(stored.raceCard)) {
+  if (stored?.isFresh && canServeFreshStoredRaceCard(stored.raceCard)) {
     return { ok: true, raceCard: await hydrateRaceCardOdds(stored.raceCard) };
   }
 
