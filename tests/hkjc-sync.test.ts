@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildLocalMainRaceCard, hydrateRaceCardOdds } from "@/lib/hkjc-racecard";
-import { canFinalizeHkjcRace, extractActiveMainHkjcMeetings } from "@/lib/hkjc-sync";
+import {
+  canFinalizeHkjcRace,
+  extractActiveMainHkjcMeetings,
+  isSyncableRaceCardForMeeting,
+} from "@/lib/hkjc-sync";
 
 test("active GraphQL ST/HV meetings expand into syncable race numbers only", () => {
   const meetings = extractActiveMainHkjcMeetings({
@@ -82,6 +86,31 @@ test("fallback racecard builder can preload all races for the next ST/HV meeting
     { raceNo: 2, raceDate: "2026/05/24", racecourseCode: "ST" },
     { raceNo: 3, raceDate: "2026/05/24", racecourseCode: "ST" },
   ]);
+});
+
+test("cron sync rejects fallback cards and race number mismatches", () => {
+  const meeting = {
+    raceDate: "2026-05-24",
+    racecourseCode: "ST",
+    currentRaceNo: 2,
+    raceCount: 3,
+    activeRaceNos: [1, 2, 3],
+  };
+  const fallbackRaceCard = buildLocalMainRaceCard(meeting, { raceNo: 2 });
+  const realRaceCard = {
+    ...fallbackRaceCard,
+    sourceUrl:
+      "https://racing.hkjc.com/en-us/local/information/racecard?racedate=2026/05/24&Racecourse=ST&RaceNo=2",
+    runners: fallbackRaceCard.runners.map((runner) => ({
+      ...runner,
+      name: `REAL HORSE ${runner.horseNo}`,
+      brandNo: `L${String(200 + Number(runner.horseNo))}`,
+    })),
+  };
+
+  assert.equal(isSyncableRaceCardForMeeting(fallbackRaceCard, meeting, 2), false);
+  assert.equal(isSyncableRaceCardForMeeting(realRaceCard, meeting, 2), true);
+  assert.equal(isSyncableRaceCardForMeeting(realRaceCard, meeting, 3), false);
 });
 
 test("stored racecard shells hydrate live official Quinella odds", async () => {

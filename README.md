@@ -45,20 +45,38 @@ npm.cmd run db:setup
 
 `db:setup` is the supported local database setup command for this project. It applies the committed Prisma migrations, ensures app settings exist, and seeds the first admin from environment variables.
 
-## Vercel
+## Railway
 
-This project is connected to Prisma Postgres on Vercel. Keep these environment variables set before deploying:
+This project is deployed as a persistent Railway web service with PostgreSQL. Keep these environment variables set before deploying:
 
 ```txt
-DATABASE_URL="postgresql://..."
+DATABASE_URL="${{Postgres.DATABASE_URL}}"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="change-this-password"
 SESSION_SECRET="replace-with-a-long-random-string"
 CRON_SECRET="replace-with-a-long-random-string"
+NODE_ENV="production"
 ```
 
-The Vercel build runs `prisma migrate deploy` before `next build`, so the hosted PostgreSQL schema is updated from the committed migration history on deployment.
-Vercel Cron is configured in `vercel.json` to call `/api/cron/hkjc-sync` every 2 minutes. Set `CRON_SECRET` in the deployment environment so the cron route can authenticate.
+Railway should use:
+
+```txt
+Build Command: prisma generate && next build
+Start Command: npm run start
+Pre-deploy Command: prisma migrate deploy
+```
+
+Do not configure the main Railway app service as a scheduled/cron-only service. It must run continuously as the web server. Use external `cron-job.org` to call `/api/cron/hkjc-sync` with either `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`.
+
+After deployment:
+
+```powershell
+curl.exe https://YOUR-RAILWAY-DOMAIN/api/health
+curl.exe -H "Authorization: Bearer YOUR_CRON_SECRET" https://YOUR-RAILWAY-DOMAIN/api/health/hkjc
+curl.exe -H "Authorization: Bearer YOUR_CRON_SECRET" https://YOUR-RAILWAY-DOMAIN/api/cron/hkjc-sync
+```
+
+Then open `/race` and inspect race tabs. Player pages should never show fallback runners such as `GOLDEN SIXTY STAR` or brand numbers like `F001`; if HKJC data is unavailable, the app should show an unavailable state instead.
 
 ## Admin Flow
 

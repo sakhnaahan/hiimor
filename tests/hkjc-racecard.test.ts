@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getLiveHkjcUpcomingRaceCard,
+  buildLocalMainRaceCard,
+  getRaceCardQualityIssues,
+  isFallbackRaceCard,
+  isUsableHkjcRaceCard,
   parseHkjcRaceCardGraphql,
   parseHkjcRaceCardHtml,
   parseMainHkjcFixtureMeetings,
@@ -115,6 +119,24 @@ test("HKJC parser extracts race metadata and runners", () => {
 
 test("HKJC parser returns null for unrecognized markup", () => {
   assert.equal(parseHkjcRaceCardHtml("<html><body>No racecard here</body></html>"), null);
+});
+
+test("fallback racecards are not usable player HKJC data", () => {
+  const fallbackRaceCard = buildLocalMainRaceCard(
+    {
+      raceDate: "2026-05-24",
+      racecourseCode: "ST",
+      raceCount: 2,
+    },
+    { raceNo: 2 },
+  );
+
+  assert.equal(isFallbackRaceCard(fallbackRaceCard), true);
+  assert.equal(isUsableHkjcRaceCard(fallbackRaceCard), false);
+  assert.deepEqual(getRaceCardQualityIssues(fallbackRaceCard), [
+    "fallback-racecard",
+    "invalid-runner-identity",
+  ]);
 });
 
 test("HKJC GraphQL parser skips overseas meetings and selects a main HK race", () => {

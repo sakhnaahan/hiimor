@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import {
-  buildLocalMainRaceCard,
-  getFallbackMainHkjcMeeting,
   getLiveHkjcUpcomingRaceCard,
   isLocalMainRaceCard,
   isMainHkjcRacecourse,
+  isUsableHkjcRaceCard,
+  type HkjcRaceCard,
 } from "@/lib/hkjc-racecard";
 import { readStoredHkjcRaceResult, storeHkjcRaceResult, upsertHkjcRaceCardSnapshot } from "@/lib/hkjc-snapshots";
 import { getHkjcRaceResult } from "@/lib/hkjc-results";
@@ -99,6 +99,26 @@ export function canFinalizeHkjcRace(raceDate: string, startTime: string, now = D
   return Number.isFinite(raceTime.getTime()) && now >= raceTime.getTime();
 }
 
+function normalizeRaceDate(value: string) {
+  return value.replace(/-/g, "/");
+}
+
+function matchesMeetingRace(raceCard: HkjcRaceCard, meeting: ActiveMainMeeting, raceNo: number) {
+  return (
+    normalizeRaceDate(raceCard.raceDate) === normalizeRaceDate(meeting.raceDate) &&
+    raceCard.racecourseCode === meeting.racecourseCode &&
+    raceCard.raceNo === raceNo
+  );
+}
+
+export function isSyncableRaceCardForMeeting(
+  raceCard: HkjcRaceCard,
+  meeting: ActiveMainMeeting,
+  raceNo: number,
+) {
+  return matchesMeetingRace(raceCard, meeting, raceNo) && isUsableHkjcRaceCard(raceCard);
+}
+
 async function fetchActiveMainMeetings() {
   const response = await fetch(HKJC_GRAPHQL_URL, {
     method: "POST",
@@ -156,6 +176,10 @@ async function syncActiveMeetings(summary: HkjcSyncSummary, meetings: ActiveMain
       }
 
       const raceCard = raceCardResult.raceCard;
+      if (!isSyncableRaceCardForMeeting(raceCard, meeting, raceNo)) {
+        continue;
+      }
+
       await upsertHkjcRaceCardSnapshot(raceCard, {
         meetingStatus: raceNo === meeting.currentRaceNo ? "RUNNING" : "OPEN",
         raceStatus: isLocalMainRaceCard(raceCard)
@@ -171,23 +195,6 @@ async function syncActiveMeetings(summary: HkjcSyncSummary, meetings: ActiveMain
         summary.oddsRefreshed += 1;
       }
     }
-  }
-}
-
-async function preloadFallbackMeeting(summary: HkjcSyncSummary) {
-  const fallbackMeeting = await getFallbackMainHkjcMeeting();
-  summary.meetingsScanned = 1;
-
-  for (let raceNo = 1; raceNo <= Math.max(1, fallbackMeeting.raceCount); raceNo += 1) {
-    const raceCard = buildLocalMainRaceCard(fallbackMeeting, { raceNo });
-    await upsertHkjcRaceCardSnapshot(raceCard, {
-      meetingStatus: "SCHEDULED",
-      raceStatus: "FALLBACK",
-      raceCount: fallbackMeeting.raceCount,
-      currentRaceNo: null,
-    });
-    summary.racesUpserted += 1;
-    summary.oddsRefreshed += 1;
   }
 }
 
@@ -283,8 +290,6 @@ export async function runHkjcSync(): Promise<HkjcSyncSummary> {
 
     if (activeMeetings.length > 0) {
       await syncActiveMeetings(summary, activeMeetings);
-    } else {
-      await preloadFallbackMeeting(summary);
     }
 
     await finalizeOfficialResults(summary);

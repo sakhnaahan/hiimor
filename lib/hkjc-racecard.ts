@@ -569,7 +569,7 @@ function mergeRunnerDetailsFromHtmlRaceCard(targetRaceCard: HkjcRaceCard, htmlRa
 
 function isMissingHtmlRunnerDetails(raceCard: HkjcRaceCard) {
   return (
-    !isLocalMainRaceCard(raceCard) &&
+    !isFallbackRaceCard(raceCard) &&
     raceCard.runners.length > 0 &&
     raceCard.runners.every(
       (runner) => !runner.age && !runner.sex && !runner.bestTime && !runner.daysSinceLastRun && !runner.overWeight,
@@ -577,8 +577,62 @@ function isMissingHtmlRunnerDetails(raceCard: HkjcRaceCard) {
   );
 }
 
+export function isFallbackRaceCard(raceCard: Pick<HkjcRaceCard, "sourceUrl" | "runners">) {
+  return (
+    raceCard.sourceUrl.startsWith(LOCAL_MAIN_RACECARD_URL) ||
+    raceCard.runners.some((runner) => /^F\d{3}$/i.test(runner.brandNo) || FALLBACK_RUNNER_NAMES.includes(runner.name))
+  );
+}
+
+export function getRaceCardQualityIssues(raceCard: HkjcRaceCard) {
+  const issues: string[] = [];
+
+  if (isFallbackRaceCard(raceCard)) {
+    issues.push("fallback-racecard");
+  }
+
+  if (!raceCard.raceDate) {
+    issues.push("missing-race-date");
+  }
+
+  if (!isMainHkjcRacecourse(raceCard.racecourseCode)) {
+    issues.push("invalid-racecourse");
+  }
+
+  if (!Number.isInteger(raceCard.raceNo) || raceCard.raceNo < 1) {
+    issues.push("invalid-race-no");
+  }
+
+  if (raceCard.runners.length === 0) {
+    issues.push("missing-runners");
+  }
+
+  const hasInvalidRunnerIdentity = raceCard.runners.some(
+    (runner) => !runner.horseNo || !runner.name || !runner.brandNo || /^F\d{3}$/i.test(runner.brandNo),
+  );
+  if (hasInvalidRunnerIdentity) {
+    issues.push("invalid-runner-identity");
+  }
+
+  return issues;
+}
+
+export function isUsableHkjcRaceCard(raceCard: HkjcRaceCard) {
+  return getRaceCardQualityIssues(raceCard).length === 0;
+}
+
 function canServeFreshStoredRaceCard(raceCard: HkjcRaceCard) {
-  return !isLocalMainRaceCard(raceCard) && !isMissingHtmlRunnerDetails(raceCard);
+  return isUsableHkjcRaceCard(raceCard) && !isMissingHtmlRunnerDetails(raceCard);
+}
+
+function matchesRaceRequest(raceCard: HkjcRaceCard, request: RaceRequest) {
+  const requestedRaceDate = normalizeRaceDateForGraphql(request.raceDate);
+  const raceCardDate = normalizeRaceDateForGraphql(raceCard.raceDate);
+  return (
+    (!requestedRaceDate || requestedRaceDate === raceCardDate) &&
+    (!request.racecourse || normalizeRacecourseCode(request.racecourse) === normalizeRacecourseCode(raceCard.racecourseCode)) &&
+    (!request.raceNo || request.raceNo === raceCard.raceNo)
+  );
 }
 
 async function enrichRaceCardWithHtmlRunnerDetails(raceCard: HkjcRaceCard) {
@@ -1110,7 +1164,11 @@ export async function getLiveHkjcUpcomingRaceCard(request: RaceRequest = {}): Pr
 
     const raceCard = parseHkjcRaceCardHtml(await response.text(), sourceUrl);
     if (!raceCard) {
-      return { ok: true, raceCard: await getLocalMainRaceCardFallback(sanitizedRequest) };
+      return {
+        ok: false,
+        message: "HKJC racecard data is unavailable.",
+        sourceUrl,
+      };
     }
 
     if (raceCard.raceDate && raceCard.racecourseCode) {
@@ -1119,11 +1177,6 @@ export async function getLiveHkjcUpcomingRaceCard(request: RaceRequest = {}): Pr
 
     return { ok: true, raceCard };
   } catch (error) {
-    const fallback = await getLocalMainRaceCardFallback(sanitizedRequest).catch(() => null);
-    if (fallback) {
-      return { ok: true, raceCard: fallback };
-    }
-
     return {
       ok: false,
       message: error instanceof Error ? error.message : "HKJC racecard fetch failed.",
@@ -1145,7 +1198,7 @@ export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promis
   }
 
   const live = await getLiveHkjcUpcomingRaceCard(request);
-  if (live.ok) {
+  if (live.ok && isUsableHkjcRaceCard(live.raceCard) && matchesRaceRequest(live.raceCard, request)) {
     const snapshotStatus = inferSnapshotStatus(live.raceCard);
     await upsertHkjcRaceCardSnapshot(live.raceCard, {
       ...snapshotStatus,
@@ -1157,11 +1210,17 @@ export async function getHkjcUpcomingRaceCard(request: RaceRequest = {}): Promis
     return live;
   }
 
-  if (stored) {
-    return { ok: true, raceCard: stored.raceCard };
+  if (stored && isUsableHkjcRaceCard(stored.raceCard) && matchesRaceRequest(stored.raceCard, request)) {
+    return { ok: true, raceCard: await hydrateRaceCardOdds(stored.raceCard) };
   }
 
-  return live;
+  return live.ok
+    ? {
+        ok: false,
+        message: "HKJC racecard data is unavailable.",
+        sourceUrl: live.raceCard.sourceUrl,
+      }
+    : live;
 }
 
 export async function hydrateRaceCardOdds(raceCard: HkjcRaceCard) {
