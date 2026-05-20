@@ -479,6 +479,9 @@ textarea {
 .section-heading .section-title {
   margin-bottom: 4px;
 }
+.test-deploy {
+  color: red;
+}
 
 .muted {
   color: #9f2d3a;
