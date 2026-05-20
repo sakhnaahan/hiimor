@@ -5,6 +5,7 @@ import type { ActionState } from "@/app/actions";
 import { getTranslations, type Language } from "@/lib/i18n";
 
 type ActionFormContext = {
+  ok?: boolean;
   pending: boolean;
   message: React.ReactNode;
 };
@@ -39,7 +40,7 @@ export function ActionForm({
   return (
     <form action={formAction} className={className} onSubmit={onSubmit}>
       {typeof children === "function" ? (
-        children({ pending, message })
+        children({ ok: state.ok, pending, message })
       ) : (
         <>
           {children}

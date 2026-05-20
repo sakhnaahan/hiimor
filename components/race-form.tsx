@@ -209,6 +209,32 @@ function getRunnerByHorseNo(runners: readonly HkjcRunner[], horseNo: string) {
   return runners.find((runner) => runner.horseNo === horseNo) ?? null;
 }
 
+function BasketSubmitEffects({
+  ok,
+  pending,
+  onSuccess,
+}: {
+  ok?: boolean;
+  pending: boolean;
+  onSuccess: () => void;
+}) {
+  const handledSuccessRef = useRef(false);
+
+  useEffect(() => {
+    if (ok && !pending) {
+      if (!handledSuccessRef.current) {
+        handledSuccessRef.current = true;
+        onSuccess();
+      }
+      return;
+    }
+
+    handledSuccessRef.current = false;
+  }, [ok, onSuccess, pending]);
+
+  return null;
+}
+
 export function RaceForm({
   balance,
   raceCard,
@@ -242,7 +268,13 @@ export function RaceForm({
     useState<QuinellaInspectedPair | null>(null);
   const previousMobileBetModeRef = useRef(mobileBetMode);
   const placeAvailable = canOfferPlaceBet(raceCard.runners);
-  const basketTotals = getBasketTotals(basketItems);
+  const basketTotals = getBasketTotals(
+    basketItems.map((item) => ({
+      betType: item.betType,
+      quinellaLegHorseNos: item.selectedLegHorseNos,
+      unitBetAmount: item.unitBetAmount,
+    })),
+  );
   const router = useRouter();
   const visibleBetSlipItems = basketItems;
   const runnerBetButtonLabels = getRunnerBetButtonLabels(language);
@@ -694,7 +726,7 @@ export function RaceForm({
   }
 
   function clearBasketItems() {
-    setBasketItems([]);
+    setBasketItems((items) => (items.length > 0 ? [] : items));
   }
 
   function clearQuinellaDraftState() {
@@ -723,8 +755,12 @@ export function RaceForm({
     );
     if (!confirmed) {
       event.preventDefault();
+      return;
     }
-    setBasketItems([]);
+  }
+
+  function handleBasketSubmitSuccess() {
+    clearBasketItems();
     router.push("/history");
   }
 
@@ -735,8 +771,13 @@ export function RaceForm({
       language={language}
       onSubmit={confirmBasket}
     >
-      {({ pending, message }) => (
+      {({ ok, pending, message }) => (
         <>
+          <BasketSubmitEffects
+            ok={ok}
+            onSuccess={handleBasketSubmitSuccess}
+            pending={pending}
+          />
           <input name="raceDate" type="hidden" value={raceCard.raceDate} />
           <input
             name="racecourseCode"
