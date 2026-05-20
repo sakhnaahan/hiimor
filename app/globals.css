@@ -178,7 +178,8 @@ textarea {
   color: var(--brand-strong);
 }
 
-.player-mobile-shell :is(
+.player-mobile-shell
+  :is(
     .button,
     .language-switch button,
     .topbar-nav a,
@@ -191,7 +192,8 @@ textarea {
     .quick-stakes button,
     .source-link
   ):focus-visible,
-.admin-mobile-shell :is(
+.admin-mobile-shell
+  :is(
     .button,
     .language-switch button,
     .topbar-nav a,
@@ -479,7 +481,8 @@ textarea {
 }
 
 .muted {
-  color: var(--muted);
+  color: #9f2d3a;
+  font: 700;
 }
 
 .muted a {
@@ -1218,7 +1221,9 @@ textarea {
 .silk-placeholder-head::before {
   background: #dc2626;
   border-radius: 50%;
-  box-shadow: 5px -1px 0 #dc2626, 8px 3px 0 #dc2626;
+  box-shadow:
+    5px -1px 0 #dc2626,
+    8px 3px 0 #dc2626;
   content: "";
   height: 2px;
   left: 2px;
@@ -1378,8 +1383,7 @@ textarea {
 }
 
 .runner-detail-card {
-  background:
-    linear-gradient(160deg, #f4f9ff 0%, #ffffff 38%, #eef5fb 100%);
+  background: linear-gradient(160deg, #f4f9ff 0%, #ffffff 38%, #eef5fb 100%);
   border-top: 1px solid rgba(11, 59, 120, 0.14);
   border-radius: 0 0 18px 18px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
@@ -3068,7 +3072,9 @@ textarea {
   }
 
   .silk-placeholder-head::before {
-    box-shadow: 4px -1px 0 #dc2626, 6px 2px 0 #dc2626;
+    box-shadow:
+      4px -1px 0 #dc2626,
+      6px 2px 0 #dc2626;
     height: 2px;
     left: 2px;
     top: 2px;

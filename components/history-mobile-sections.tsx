@@ -62,14 +62,14 @@ export function HistoryMobileSections({
         >
           {resultsTabLabel}
         </button>
-        <button
+        {/* <button
           aria-pressed={activeTab === "transactions"}
           className={activeTab === "transactions" ? "active" : ""}
           onClick={() => setActiveTab("transactions")}
           type="button"
         >
           {transactionsTabLabel}
-        </button>
+        </button> */}
       </div>
 
       <section
