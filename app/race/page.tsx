@@ -11,13 +11,15 @@ import { SettlementPoller } from "@/components/settlement-poller";
 import { getTranslations } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
-const HONG_KONG_LIVE_STREAM_URL =
-  "https://www.racingandsports.com.au/news/racing/news/2019-09-01/hong-kong-races-live-streamed-on-racing-and-sports/494483";
-
+const HONG_KONG_LIVE_STREAM_URL = "https://www.youtube.com/@WHR-HK/streams";
 export default async function RacePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ raceDate?: string; racecourse?: string; raceNo?: string }>;
+  searchParams?: Promise<{
+    raceDate?: string;
+    racecourse?: string;
+    raceNo?: string;
+  }>;
 }) {
   const user = await requireApprovedUser();
   await ensureBootstrapData();
@@ -30,7 +32,9 @@ export default async function RacePage({
   const resolvedSearchParams = await searchParams;
   const selectedRaceNo = Number(resolvedSearchParams?.raceNo);
   const raceRequest =
-    Number.isInteger(selectedRaceNo) && resolvedSearchParams?.raceDate && resolvedSearchParams.racecourse
+    Number.isInteger(selectedRaceNo) &&
+    resolvedSearchParams?.raceDate &&
+    resolvedSearchParams.racecourse
       ? {
           raceDate: resolvedSearchParams.raceDate,
           racecourse: resolvedSearchParams.racecourse,
@@ -38,11 +42,15 @@ export default async function RacePage({
         }
       : {};
   const [freshUser, hkjcRaceCard, pendingRaceCount] = await Promise.all([
-    isAdmin ? Promise.resolve(null) : prisma.user.findUniqueOrThrow({ where: { id: user.id } }),
+    isAdmin
+      ? Promise.resolve(null)
+      : prisma.user.findUniqueOrThrow({ where: { id: user.id } }),
     getHkjcUpcomingRaceCard(raceRequest),
     isAdmin
       ? prisma.raceResult.count({ where: { result: "PENDING" } })
-      : prisma.raceResult.count({ where: { userId: user.id, result: "PENDING" } }),
+      : prisma.raceResult.count({
+          where: { userId: user.id, result: "PENDING" },
+        }),
   ]);
   const raceDetails = hkjcRaceCard.ok
     ? [
@@ -117,7 +125,9 @@ export default async function RacePage({
                 ))}
               </div>
             ) : null}
-            {isAdmin ? <div className="message">{t.adminRaceViewOnly}</div> : null}
+            {isAdmin ? (
+              <div className="message">{t.adminRaceViewOnly}</div>
+            ) : null}
           </>
         ) : (
           <>
@@ -127,7 +137,9 @@ export default async function RacePage({
                 <p className="muted">{t.racecardUnavailable}</p>
               </div>
             </div>
-            <p className="message error">{language === "mn" ? t.racecardUnavailable : hkjcRaceCard.message}</p>
+            <p className="message error">
+              {language === "mn" ? t.racecardUnavailable : hkjcRaceCard.message}
+            </p>
           </>
         )}
       </section>
