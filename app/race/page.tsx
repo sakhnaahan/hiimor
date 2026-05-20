@@ -12,7 +12,7 @@ import { getTranslations } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
 const HONG_KONG_LIVE_STREAM_URL =
-  "https://www.youtube.com/channel/UCSuzEzGo0zIK0wcpr8j46QQ";
+  "https://www.youtube.com/@WHR-HK/streams";
 export default async function RacePage({
   searchParams,
 }: {
