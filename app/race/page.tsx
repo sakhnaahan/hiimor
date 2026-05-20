@@ -11,7 +11,8 @@ import { SettlementPoller } from "@/components/settlement-poller";
 import { getTranslations } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/language";
 
-const HONG_KONG_LIVE_STREAM_URL = "https://www.youtube.com/@WHR-HK/streams";
+const HONG_KONG_LIVE_STREAM_URL =
+  "https://www.youtube.com/channel/UCSuzEzGo0zIK0wcpr8j46QQ";
 export default async function RacePage({
   searchParams,
 }: {
